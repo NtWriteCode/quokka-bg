@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:bg_tracker/models/board_game.dart';
-import 'package:bg_tracker/repositories/game_repository.dart';
+import 'package:quokka/models/board_game.dart';
+import 'package:quokka/repositories/game_repository.dart';
 
 class VerifyGamePage extends StatefulWidget {
   final Map<String, dynamic>? searchResult;

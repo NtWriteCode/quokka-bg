@@ -1,6 +1,6 @@
-import 'package:bg_tracker/models/board_game.dart';
-import 'package:bg_tracker/models/play_record.dart';
-import 'package:bg_tracker/models/player.dart';
+import 'package:quokka/models/board_game.dart';
+import 'package:quokka/models/play_record.dart';
+import 'package:quokka/models/player.dart';
 import 'package:intl/intl.dart';
 
 enum StatsPeriod { week, month, year, total }

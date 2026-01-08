@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:bg_tracker/repositories/game_repository.dart';
-import 'package:bg_tracker/services/sync_service.dart';
+import 'package:quokka/repositories/game_repository.dart';
+import 'package:quokka/services/sync_service.dart';
 
 class SettingsPage extends StatefulWidget {
   final GameRepository repository;

@@ -1,6 +1,6 @@
 
 import 'dart:io';
-import 'package:bg_tracker/services/storage_service.dart';
+import 'package:quokka/services/storage_service.dart';
 import 'package:path_provider/path_provider.dart';
 
 class FileStorageService implements StorageService {

@@ -1,4 +1,4 @@
-import 'package:bg_tracker/models/board_game.dart';
+import 'package:quokka/models/board_game.dart';
 
 enum AchievementTier { bronze, silver, gold }
 

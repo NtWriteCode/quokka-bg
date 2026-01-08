@@ -10,16 +10,16 @@ import 'repositories/game_repository.dart';
 import 'widgets/main_scaffold.dart';
 
 void main() {
-  runApp(const BgTrackerApp());
+  runApp(const QuokkaApp());
 }
 
-class BgTrackerApp extends StatelessWidget {
-  const BgTrackerApp({super.key});
+class QuokkaApp extends StatelessWidget {
+  const QuokkaApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'BG Tracker',
+      title: 'Quokka',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,

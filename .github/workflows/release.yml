@@ -196,7 +196,7 @@ jobs:
         with:
           files: artifacts/*
           body: |
-            ## 🎉 ${{ github.event.repository.name }} ${{ needs.version.outputs.version }}
+            ## 🎉 Quokka ${{ needs.version.outputs.version }}
             
             ### 📦 Downloads
             - **Android**: APK for ARM64 devices

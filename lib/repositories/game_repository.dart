@@ -4,12 +4,12 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart';
-import 'package:bg_tracker/models/board_game.dart';
-import 'package:bg_tracker/models/play_record.dart';
-import 'package:bg_tracker/models/player.dart';
-import 'package:bg_tracker/models/user_stats.dart';
-import 'package:bg_tracker/services/sync_service.dart';
-import 'package:bg_tracker/services/achievement_service.dart';
+import 'package:quokka/models/board_game.dart';
+import 'package:quokka/models/play_record.dart';
+import 'package:quokka/models/player.dart';
+import 'package:quokka/models/user_stats.dart';
+import 'package:quokka/services/sync_service.dart';
+import 'package:quokka/services/achievement_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class GameRepository extends ChangeNotifier {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:bg_tracker/helpers/stats_helper.dart';
-import 'package:bg_tracker/repositories/game_repository.dart';
+import 'package:quokka/helpers/stats_helper.dart';
+import 'package:quokka/repositories/game_repository.dart';
 
 class StatsPage extends StatefulWidget {
   final GameRepository repository;

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:bg_tracker/models/board_game.dart';
-import 'package:bg_tracker/models/player.dart';
-import 'package:bg_tracker/models/play_record.dart';
-import 'package:bg_tracker/repositories/game_repository.dart';
+import 'package:quokka/models/board_game.dart';
+import 'package:quokka/models/player.dart';
+import 'package:quokka/models/play_record.dart';
+import 'package:quokka/repositories/game_repository.dart';
 
 class AddPlayPage extends StatefulWidget {
   final GameRepository repository;

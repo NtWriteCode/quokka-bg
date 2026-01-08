@@ -1,4 +1,4 @@
-package com.example.bg_tracker
+package com.roland.quokka
 
 import io.flutter.embedding.android.FlutterActivity
 

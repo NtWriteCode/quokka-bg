@@ -1,6 +1,6 @@
 
-import 'package:bg_tracker/repositories/game_repository.dart';
-import 'package:bg_tracker/pages/verify_game_page.dart';
+import 'package:quokka/repositories/game_repository.dart';
+import 'package:quokka/pages/verify_game_page.dart';
 import 'package:flutter/material.dart';
 
 class AddGamePage extends StatefulWidget {

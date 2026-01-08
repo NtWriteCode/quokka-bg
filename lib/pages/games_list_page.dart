@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:bg_tracker/models/board_game.dart';
-import 'package:bg_tracker/pages/add_game_page.dart';
-import 'package:bg_tracker/pages/verify_game_page.dart';
-import 'package:bg_tracker/repositories/game_repository.dart';
+import 'package:quokka/models/board_game.dart';
+import 'package:quokka/pages/add_game_page.dart';
+import 'package:quokka/pages/verify_game_page.dart';
+import 'package:quokka/repositories/game_repository.dart';
 
 class GamesListPage extends StatefulWidget {
   final GameRepository repository;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:bg_tracker/repositories/game_repository.dart';
-import 'package:bg_tracker/pages/games_list_page.dart';
-import 'package:bg_tracker/pages/add_game_page.dart';
+import 'package:quokka/repositories/game_repository.dart';
+import 'package:quokka/pages/games_list_page.dart';
+import 'package:quokka/pages/add_game_page.dart';
 
 class LibraryPage extends StatefulWidget {
   final GameRepository repository;

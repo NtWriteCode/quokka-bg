@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:bg_tracker/models/player.dart';
-import 'package:bg_tracker/repositories/game_repository.dart';
+import 'package:quokka/models/player.dart';
+import 'package:quokka/repositories/game_repository.dart';
 
 class PlayersPage extends StatefulWidget {
   final GameRepository repository;

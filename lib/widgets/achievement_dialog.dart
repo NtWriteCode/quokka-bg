@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
-import 'package:bg_tracker/models/user_stats.dart';
+import 'package:quokka/models/user_stats.dart';
 
 class AchievementDialog extends StatefulWidget {
   final List<Achievement> achievements;

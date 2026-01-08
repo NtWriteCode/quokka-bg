@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:bg_tracker/repositories/game_repository.dart';
-import 'package:bg_tracker/models/user_stats.dart';
-import 'package:bg_tracker/services/achievement_service.dart';
-import 'package:bg_tracker/pages/settings_page.dart';
-import 'package:bg_tracker/models/player.dart';
+import 'package:quokka/repositories/game_repository.dart';
+import 'package:quokka/models/user_stats.dart';
+import 'package:quokka/services/achievement_service.dart';
+import 'package:quokka/pages/settings_page.dart';
+import 'package:quokka/models/player.dart';
 import 'dart:math';
 
 class ProfilePage extends StatefulWidget {

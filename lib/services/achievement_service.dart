@@ -1,4 +1,4 @@
-import 'package:bg_tracker/models/user_stats.dart';
+import 'package:quokka/models/user_stats.dart';
 
 class AchievementService {
   static List<Achievement> get allAchievements => [

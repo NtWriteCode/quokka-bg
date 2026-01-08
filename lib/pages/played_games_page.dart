@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:bg_tracker/models/play_record.dart';
-import 'package:bg_tracker/pages/add_play_page.dart';
-import 'package:bg_tracker/repositories/game_repository.dart';
+import 'package:quokka/models/play_record.dart';
+import 'package:quokka/pages/add_play_page.dart';
+import 'package:quokka/repositories/game_repository.dart';
 
 class PlayedGamesPage extends StatefulWidget {
   final GameRepository repository;
