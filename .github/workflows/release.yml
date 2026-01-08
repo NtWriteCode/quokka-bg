@@ -80,7 +80,7 @@ jobs:
       
       - name: Build APK (arm64-v8a)
         run: |
-          flutter build apk --release --target-platform android-arm64 --no-tree-shake-icons
+          flutter build apk --release --target-platform android-arm64 --split-per-abi --no-tree-shake-icons
 
       - name: Sign APK
         if: ${{ env.KEYSTORE_BASE64 != '' }}
