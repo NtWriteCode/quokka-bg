@@ -1,0 +1,1 @@
+Modern board game collection and play tracker with stats and sync.

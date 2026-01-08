@@ -1,0 +1,6 @@
+Initial release of Quokka!
+- Board game library management.
+- Play tracking and scoring.
+- Player statistics and charts.
+- WebDAV cloud synchronization.
+- Modern Material 3 interface.
