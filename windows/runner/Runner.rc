@@ -92,10 +92,10 @@ BEGIN
             VALUE "CompanyName", "roland" "\0"
             VALUE "FileDescription", "Quokka" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "Quokka" "\0"
+            VALUE "InternalName", "QuokkaBG" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 roland. All rights reserved." "\0"
-            VALUE "OriginalFilename", "Quokka.exe" "\0"
-            VALUE "ProductName", "Quokka" "\0"
+            VALUE "OriginalFilename", "QuokkaBG.exe" "\0"
+            VALUE "ProductName", "QuokkaBG" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

@@ -1,4 +1,4 @@
-package com.roland.quokka
+package com.ntwritecode.quokka
 
 import io.flutter.embedding.android.FlutterActivity
 
