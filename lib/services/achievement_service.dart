@@ -1,0 +1,165 @@
+import 'package:bg_tracker/models/user_stats.dart';
+
+class AchievementService {
+  static List<Achievement> get allAchievements => [
+        // Collector
+        Achievement(
+          id: 'collector_5',
+          title: 'New Hobby',
+          description: 'Own 5 games',
+          tier: AchievementTier.bronze,
+          xpReward: 15,
+          category: 'The Collector',
+        ),
+        Achievement(
+          id: 'collector_25',
+          title: 'Shelf Filler',
+          description: 'Own 25 games',
+          tier: AchievementTier.silver,
+          xpReward: 30,
+          category: 'The Collector',
+        ),
+        Achievement(
+          id: 'collector_100',
+          title: 'Museum Curator',
+          description: 'Own 100 games',
+          tier: AchievementTier.gold,
+          xpReward: 60,
+          category: 'The Collector',
+        ),
+        Achievement(
+          id: 'sold_1',
+          title: 'Spring Cleaning',
+          description: 'Sell your first game',
+          tier: AchievementTier.bronze,
+          xpReward: 15,
+          category: 'The Collector',
+        ),
+        Achievement(
+          id: 'sold_5',
+          title: 'Merchant',
+          description: 'Sell 5 games',
+          tier: AchievementTier.silver,
+          xpReward: 30,
+          category: 'The Collector',
+        ),
+        Achievement(
+          id: 'lend_1',
+          title: 'Librarian',
+          description: 'Lend a game to a friend',
+          tier: AchievementTier.bronze,
+          xpReward: 15,
+          category: 'The Collector',
+        ),
+        Achievement(
+          id: 'lend_10',
+          title: 'Public Library',
+          description: 'Lend games 10 times',
+          tier: AchievementTier.silver,
+          xpReward: 30,
+          category: 'The Collector',
+        ),
+
+        // Tactician
+        Achievement(
+          id: 'plays_10',
+          title: 'Dice Roller',
+          description: 'Log 10 play sessions',
+          tier: AchievementTier.bronze,
+          xpReward: 15,
+          category: 'The Tactician',
+        ),
+        Achievement(
+          id: 'plays_50',
+          title: 'Regular Regular',
+          description: 'Log 50 play sessions',
+          tier: AchievementTier.silver,
+          xpReward: 30,
+          category: 'The Tactician',
+        ),
+        Achievement(
+          id: 'plays_100',
+          title: 'Tabletop Legend',
+          description: 'Log 100 play sessions',
+          tier: AchievementTier.gold,
+          xpReward: 60,
+          category: 'The Tactician',
+        ),
+        Achievement(
+          id: 'session_long',
+          title: 'Marathon',
+          description: 'Log a session > 120 minutes',
+          tier: AchievementTier.silver,
+          xpReward: 30,
+          category: 'The Tactician',
+        ),
+        Achievement(
+          id: 'session_short',
+          title: 'Filler Fanatic',
+          description: 'Log a session < 15 minutes',
+          tier: AchievementTier.bronze,
+          xpReward: 15,
+          category: 'The Tactician',
+        ),
+
+        // Competitor
+        Achievement(
+          id: 'win_1',
+          title: 'First Blood',
+          description: 'Win a game',
+          tier: AchievementTier.bronze,
+          xpReward: 15,
+          category: 'The Competitor',
+        ),
+        Achievement(
+          id: 'win_10',
+          title: 'Champion',
+          description: 'Win 10 games',
+          tier: AchievementTier.silver,
+          xpReward: 30,
+          category: 'The Competitor',
+        ),
+        Achievement(
+          id: 'win_50',
+          title: 'Unstoppable',
+          description: 'Win 50 games',
+          tier: AchievementTier.gold,
+          xpReward: 60,
+          category: 'The Competitor',
+        ),
+        Achievement(
+          id: 'players_5',
+          title: 'Social Butterfly',
+          description: 'Add 5 unique players',
+          tier: AchievementTier.bronze,
+          xpReward: 15,
+          category: 'The Competitor',
+        ),
+        Achievement(
+          id: 'distinct_10',
+          title: 'Variety Show',
+          description: 'Play 10 distinct games',
+          tier: AchievementTier.silver,
+          xpReward: 30,
+          category: 'The Competitor',
+        ),
+
+        // Wishlist
+        Achievement(
+          id: 'wish_1',
+          title: 'Dreamer',
+          description: 'Add a game to your wishlist',
+          tier: AchievementTier.bronze,
+          xpReward: 15,
+          category: 'The Wishful Thinker',
+        ),
+        Achievement(
+          id: 'wish_to_own_1',
+          title: 'Deal Hunter',
+          description: 'Move a game from Wishlist to Collection',
+          tier: AchievementTier.bronze,
+          xpReward: 15,
+          category: 'The Wishful Thinker',
+        ),
+      ];
+}
