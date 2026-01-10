@@ -68,9 +68,10 @@ jobs:
           if [[ "$VERSION" == *"+"* ]]; then
             sed -i "s/^version: .*/version: $VERSION/" pubspec.yaml
           else
-            CURRENT_BUILD=$(grep "^version:" pubspec.yaml | sed 's/.*+//')
-            NEW_BUILD=$((CURRENT_BUILD + 1))
-            sed -i "s/^version: .*/version: ${VERSION}+${NEW_BUILD}/" pubspec.yaml
+            # Use GitHub run number to ensure a strictly increasing build number (versionCode)
+            # This avoids the issue where using the static pubspec.yaml always results in the same build number (e.g., 2 -> 2002).
+            BUILD_NUMBER=$(( 3000 + ${{ github.run_number }} ))
+            sed -i "s/^version: .*/version: ${VERSION}+${BUILD_NUMBER}/" pubspec.yaml
           fi
 
       - name: Decode keystore
