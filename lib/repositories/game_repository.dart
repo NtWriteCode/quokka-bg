@@ -615,4 +615,37 @@ class GameRepository extends ChangeNotifier {
       dateAdded: DateTime.now(),
     );
   }
+
+  Future<void> resetData() async {
+    // 1. Clear in-memory state
+    _ownedGames = [];
+    _players = [];
+    _playRecords = [];
+    _userStats = UserStats();
+    
+    // 2. Overwrite local files with empty state
+    // We don't just delete them because we want to sync the empty state
+    try {
+      final gamesFile = await _localFile;
+      await gamesFile.writeAsString(jsonEncode([]));
+      
+      final playersFile = await _playersFile;
+      await playersFile.writeAsString(jsonEncode([]));
+      
+      final playsFile = await _playsFile;
+      await playsFile.writeAsString(jsonEncode([]));
+      
+      final statsFile = await _statsFile;
+      await statsFile.writeAsString(jsonEncode(_userStats.toJson()));
+      
+      // 3. Increment version and sync to server
+      // This will ensure remote also gets the empty files
+      await _postSaveSync();
+      
+      notifyListeners();
+    } catch (e) {
+      print('DEBUG: Error resetting data: $e');
+      rethrow;
+    }
+  }
 }

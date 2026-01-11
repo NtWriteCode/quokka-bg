@@ -163,6 +163,56 @@ class _SettingsPageState extends State<SettingsPage> {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sync triggered')));
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.delete_forever_outlined, color: Colors.red),
+            title: const Text('Reset Profile', style: TextStyle(color: Colors.red)),
+            subtitle: const Text('Clear all local data and sync this reset to the server'),
+            onTap: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Reset Everything?'),
+                  content: const Text('This will delete all your games, players, plays, and stats. If you have a sync server connected, the data on the server will also be reset. This cannot be undone.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      child: const Text('Reset Everything'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirm == true) {
+                // Show loading
+                if (mounted) {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                try {
+                  await widget.repository.resetData();
+                  if (mounted) {
+                    Navigator.pop(context); // Close loading
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Profile Reset Successfully')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    Navigator.pop(context); // Close loading
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error resetting profile: $e'), backgroundColor: Colors.red),
+                    );
+                  }
+                }
+              }
+            },
+          ),
           const Divider(),
           _buildSectionHeader('Appearance'),
           SwitchListTile(
