@@ -385,31 +385,48 @@ class _GamePickerSheetState extends State<_GamePickerSheet> {
       maxChildSize: 0.9,
       minChildSize: 0.5,
       expand: false,
-      builder: (context, scrollController) => Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      hintText: _searchBgg ? 'Search BGG...' : 'Search collection...',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
-                      filled: true,
-                      fillColor: Colors.grey.withOpacity(0.1),
-                    ),
-                    onChanged: (val) {
-                      setState(() => _query = val);
-                      if (_searchBgg) {
-                        _performBggSearch(val);
-                      }
-                    },
-                  ),
+      builder: (context, scrollController) => Material(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12.0),
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                const SizedBox(width: 8),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: _searchBgg ? 'Search BGG...' : 'Search collection...',
+                        prefixIcon: const Icon(Icons.search),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                        filled: true,
+                        fillColor: Colors.grey.withOpacity(0.1),
+                      ),
+                      onChanged: (val) {
+                        setState(() => _query = val);
+                        if (_searchBgg) {
+                          _performBggSearch(val);
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                 IconButton.filledTonal(
                   onPressed: () {
                     setState(() {
@@ -483,7 +500,8 @@ class _GamePickerSheetState extends State<_GamePickerSheet> {
                     },
                   ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
