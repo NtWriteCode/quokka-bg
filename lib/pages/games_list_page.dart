@@ -69,7 +69,8 @@ class _GamesListPageState extends State<GamesListPage> {
         children.addAll(_buildSection('Other (Not Owned)', unowned));
       }
     } else {
-      children.addAll(gamesList.map((g) => _buildGameTile(g)));
+      final sortedWishlist = _sortGamesWithExpansions(gamesList);
+      children.addAll(sortedWishlist.map((g) => _buildGameTile(g)));
     }
 
     return Scaffold(
@@ -101,6 +102,7 @@ class _GamesListPageState extends State<GamesListPage> {
   }
 
   List<Widget> _buildSection(String title, List<BoardGame> games) {
+    final sortedGames = _sortGamesWithExpansions(games);
     return [
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -112,8 +114,34 @@ class _GamesListPageState extends State<GamesListPage> {
               ),
         ),
       ),
-      ...games.map((game) => _buildGameTile(game)),
+      ...sortedGames.map((game) => _buildGameTile(game)),
     ];
+  }
+
+  List<BoardGame> _sortGamesWithExpansions(List<BoardGame> games) {
+    // 1. Separate base games and expansions
+    final baseGames = games.where((g) => !g.isExpansion).toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    
+    final expansions = games.where((g) => g.isExpansion).toList();
+    
+    final List<BoardGame> result = [];
+    
+    // 2. Put expansions after their parents
+    for (var base in baseGames) {
+      result.add(base);
+      final relatedExpansions = expansions.where((e) => e.parentGameId == base.id).toList()
+        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      result.addAll(relatedExpansions);
+    }
+    
+    // 3. Add orphaned expansions at the end
+    final addedIds = result.map((g) => g.id).toSet();
+    final orphans = expansions.where((e) => !addedIds.contains(e.id)).toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    result.addAll(orphans);
+    
+    return result;
   }
 
   Widget _buildGameTile(BoardGame game) {
@@ -122,7 +150,17 @@ class _GamesListPageState extends State<GamesListPage> {
           ? Image.network(game.customThumbnailUrl!,
               width: 50, errorBuilder: (_, __, ___) => const Icon(Icons.image))
           : const Icon(Icons.videogame_asset),
-      title: Text(game.name),
+      title: Row(
+        children: [
+          if (game.isExpansion)
+            const Padding(
+              padding: EdgeInsets.only(right: 4.0),
+              child: Text('↳', style: TextStyle(color: Colors.grey, fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+          Expanded(child: Text(game.name, style: TextStyle(fontSize: game.isExpansion ? 14 : 16))),
+        ],
+      ),
+      contentPadding: EdgeInsets.only(left: game.isExpansion ? 32.0 : 16.0, right: 16.0),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -81,6 +81,26 @@ class GameRepository extends ChangeNotifier {
         case 'players_5': shouldUnlock = _players.length >= 5; break;
         case 'wish_1': shouldUnlock = _ownedGames.any((g) => g.isWishlist); break;
         case 'wish_to_own_1': shouldUnlock = _userStats.wishlistConversions >= 1; break;
+        
+        // Expansionist achievements
+        case 'expansion_1': 
+          shouldUnlock = _ownedGames.where((g) => g.isExpansion && g.status == GameStatus.owned).length >= 1; break;
+        case 'expansion_10': 
+          shouldUnlock = _ownedGames.where((g) => g.isExpansion && g.status == GameStatus.owned).length >= 10; break;
+        case 'expansion_30': 
+          shouldUnlock = _ownedGames.where((g) => g.isExpansion && g.status == GameStatus.owned).length >= 30; break;
+        case 'expansion_play_1': 
+          shouldUnlock = _playRecords.any((p) => p.expansionIds.isNotEmpty); break;
+        case 'expansion_play_3': 
+          shouldUnlock = _playRecords.any((p) => p.expansionIds.length >= 3); break;
+        case 'expansion_variety_5': {
+          final parentIds = _ownedGames
+              .where((g) => g.isExpansion && g.status == GameStatus.owned && g.parentGameId != null)
+              .map((g) => g.parentGameId)
+              .toSet();
+          shouldUnlock = parentIds.length >= 5;
+          break;
+        }
       }
       
       if (shouldUnlock) {
@@ -547,6 +567,16 @@ class GameRepository extends ChangeNotifier {
         final item = details['item'];
         if (item == null) return null;
 
+        final isExpansion = item['subtype'] == 'boardgameexpansion';
+        String? parentGameId;
+
+        if (isExpansion && item['links'] != null) {
+          final expands = item['links']['expandsboardgame'];
+          if (expands is List && expands.isNotEmpty) {
+            parentGameId = expands[0]['objectid']?.toString();
+          }
+        }
+
         final id = item['id']?.toString() ?? '';
         final name = item['name'] ?? 'Unknown';
         final description = item['description'];
@@ -585,6 +615,8 @@ class GameRepository extends ChangeNotifier {
             customImageUrl: largeImage,
             customThumbnailUrl: thumbImage,
             dateAdded: DateTime.now(),
+            isExpansion: isExpansion,
+            parentGameId: parentGameId,
         );
 
       } catch (e) {
@@ -599,7 +631,8 @@ class GameRepository extends ChangeNotifier {
   }) {
     return BoardGame(
       id: searchResult['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      name: searchResult['name'] ?? 'Unknown',
+      name: searchResult['localizedname'] ?? searchResult['name'] ?? 'Unknown',
+      isExpansion: searchResult['subtype'] == 'boardgameexpansion',
       description: null,
       yearPublished: searchResult['yearpublished'] is int ? searchResult['yearpublished'] : int.tryParse(searchResult['yearpublished']?.toString() ?? ''),
       minPlayers: null,

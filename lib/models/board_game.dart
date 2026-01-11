@@ -20,6 +20,8 @@ class BoardGame {
   final String? customImageUrl;
   final String? customThumbnailUrl;
   final DateTime dateAdded;
+  final bool isExpansion;
+  final String? parentGameId;
 
   // Purchase details
   final double? price;
@@ -55,6 +57,8 @@ class BoardGame {
     this.purchaseDate,
     this.comment,
     this.status = GameStatus.owned,
+    this.isExpansion = false,
+    this.parentGameId,
   });
 
   BoardGame copyWith({
@@ -79,6 +83,8 @@ class BoardGame {
     DateTime? purchaseDate,
     String? comment,
     GameStatus? status,
+    bool? isExpansion,
+    String? parentGameId,
   }) {
     return BoardGame(
       id: id ?? this.id,
@@ -102,6 +108,8 @@ class BoardGame {
       purchaseDate: purchaseDate ?? this.purchaseDate,
       comment: comment ?? this.comment,
       status: status ?? this.status,
+      isExpansion: isExpansion ?? this.isExpansion,
+      parentGameId: parentGameId ?? this.parentGameId,
     );
   }
 
@@ -128,6 +136,8 @@ class BoardGame {
       'purchaseDate': purchaseDate?.toIso8601String(),
       'comment': comment,
       'status': status.name,
+      'isExpansion': isExpansion,
+      'parentGameId': parentGameId,
     };
   }
 
@@ -157,6 +167,8 @@ class BoardGame {
         (e) => e.name == json['status'],
         orElse: () => GameStatus.owned,
       ),
+      isExpansion: json['isExpansion'] ?? false,
+      parentGameId: json['parentGameId'],
     );
   }
 }

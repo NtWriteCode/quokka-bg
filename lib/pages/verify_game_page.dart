@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:quokka/models/board_game.dart';
 import 'package:quokka/repositories/game_repository.dart';
+import 'package:html_unescape/html_unescape.dart';
 
 class VerifyGamePage extends StatefulWidget {
   final Map<String, dynamic>? searchResult;
@@ -34,6 +35,8 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
   String _selectedCurrency = 'HUF';
   bool _isNew = true;
   DateTime? _purchaseDate;
+  bool _isExpansion = false;
+  String? _parentGameId;
 
   final List<String> _currencies = ['HUF', 'USD', 'EUR'];
 
@@ -50,8 +53,10 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
       _selectedCurrency = _gameDetails!.currency ?? 'HUF';
       _isNew = _gameDetails!.isNew ?? true;
       _purchaseDate = _gameDetails!.purchaseDate;
+      _isExpansion = _gameDetails!.isExpansion;
+      _parentGameId = _gameDetails!.parentGameId;
     } else {
-      _searchTitle = widget.searchResult!['name'];
+      _searchTitle = widget.searchResult!['localizedname'] ?? widget.searchResult!['name'];
       _loadDetails();
     }
   }
@@ -70,11 +75,19 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
       if (mounted) {
         if (detailsMap != null) {
           final details = widget.repository.convertDetailsToLocal(detailsMap);
+          final item = detailsMap['item'];
+          final detailLocalized = item?['localizedname'];
+          
           setState(() {
             _gameDetails = details;
             _detailTitle = details?.name;
-            // Default to detail title, but keep search title for choice if different
-            _selectedTitle = _detailTitle ?? _searchTitle;
+            if (detailLocalized != null && detailLocalized != _detailTitle) {
+              _searchTitle = detailLocalized;
+            }
+            // Default to search title (localized), but keep detail title for choice if different
+            _selectedTitle = _searchTitle ?? _detailTitle;
+            _isExpansion = details?.isExpansion ?? false;
+            _parentGameId = details?.parentGameId;
             _isLoading = false;
           });
         } else {
@@ -140,6 +153,8 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
         purchaseDate: _purchaseDate,
         comment: _commentController.text.isNotEmpty ? _commentController.text : null,
         status: widget.isWishlist ? GameStatus.wishlist : GameStatus.owned,
+        isExpansion: _isExpansion,
+        parentGameId: _parentGameId,
       );
 
       if (widget.existingGame != null) {
@@ -178,7 +193,9 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
   }
 
   String _stripHtml(String text) {
-    return text.replaceAll(RegExp(r'<[^>]*>'), '');
+    final unescape = HtmlUnescape();
+    final stripped = text.replaceAll(RegExp(r'<[^>]*>'), '');
+    return unescape.convert(stripped);
   }
 
   Future<void> _selectDate() async {
@@ -276,7 +293,27 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 8),
+                  if (!isViewMode)
+                    SwitchListTile(
+                      title: const Text('Is Expansion?'),
+                      subtitle: const Text('Check this if this game is an expansion for another game'),
+                      value: _isExpansion,
+                      onChanged: (val) => setState(() => _isExpansion = val),
+                    ),
+                  if (isViewMode && _isExpansion)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.extension, size: 16, color: Colors.blueGrey),
+                          const SizedBox(width: 8),
+                          Text('This is an expansion', style: TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 16),
 
                   // Title selection if names differ
                   if (!isViewMode && _searchTitle != null && _detailTitle != null && _searchTitle != _detailTitle) ...[

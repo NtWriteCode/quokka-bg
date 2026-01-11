@@ -161,5 +161,55 @@ class AchievementService {
           xpReward: 15,
           category: 'The Wishful Thinker',
         ),
+        
+        // Expansionist
+        Achievement(
+          id: 'expansion_1',
+          title: 'Expansion Starter',
+          description: 'Own your first expansion',
+          tier: AchievementTier.bronze,
+          xpReward: 15,
+          category: 'The Expansionist',
+        ),
+        Achievement(
+          id: 'expansion_10',
+          title: 'Big Box Collector',
+          description: 'Own 10 expansions',
+          tier: AchievementTier.silver,
+          xpReward: 30,
+          category: 'The Expansionist',
+        ),
+        Achievement(
+          id: 'expansion_30',
+          title: 'Completionist',
+          description: 'Own 30 expansions',
+          tier: AchievementTier.gold,
+          xpReward: 60,
+          category: 'The Expansionist',
+        ),
+        Achievement(
+          id: 'expansion_play_1',
+          title: 'Enhanced Experience',
+          description: 'Play a game with at least 1 expansion',
+          tier: AchievementTier.bronze,
+          xpReward: 15,
+          category: 'The Expansionist',
+        ),
+        Achievement(
+          id: 'expansion_play_3',
+          title: 'Content Overload',
+          description: 'Play a session with 3 or more expansions',
+          tier: AchievementTier.gold,
+          xpReward: 60,
+          category: 'The Expansionist',
+        ),
+        Achievement(
+          id: 'expansion_variety_5',
+          title: 'Flavor Enhancer',
+          description: 'Own expansions for 5 different base games',
+          tier: AchievementTier.silver,
+          xpReward: 30,
+          category: 'The Expansionist',
+        ),
       ];
 }

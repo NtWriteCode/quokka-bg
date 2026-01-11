@@ -22,6 +22,7 @@ class _AddPlayPageState extends State<AddPlayPage> {
   final Map<String, TextEditingController> _scoreControllers = {};
   String? _manualWinnerId;
   bool _isWinnerOverridden = false;
+  final Set<String> _selectedExpansions = {};
 
   @override
   void initState() {
@@ -50,6 +51,7 @@ class _AddPlayPageState extends State<AddPlayPage> {
           controller.addListener(_updateWinner);
         }
       }
+      _selectedExpansions.addAll(play.expansionIds);
     }
   }
 
@@ -98,6 +100,31 @@ class _AddPlayPageState extends State<AddPlayPage> {
     if (picked != null) setState(() => _selectedDate = picked);
   }
 
+  void _onGameSelected(BoardGame game) {
+    setState(() {
+      if (game.isExpansion && game.parentGameId != null) {
+        // Redirection logic: Selection expansion -> Select Base Game + Pre-select expansion
+        final baseGame = widget.repository.ownedGames.cast<BoardGame?>().firstWhere(
+          (g) => g?.id == game.parentGameId,
+          orElse: () => null,
+        );
+        if (baseGame != null) {
+          _selectedGame = baseGame;
+          _selectedExpansions.add(game.id);
+        } else {
+          // If base game not found (e.g. not in collection), just select the expansion as is
+          _selectedGame = game;
+        }
+      } else {
+        _selectedGame = game;
+        // Clear previous expansions if focus changed to different base game
+        // (Only clear if the new game is NOT an expansion of the currently selected game)
+        // Actually, let's just clear for simplicity when choosing a new base game.
+        _selectedExpansions.clear();
+      }
+    });
+  }
+
   void _showGamePicker() {
     final ownedGames = widget.repository.ownedGames.where((g) => g.status != GameStatus.wishlist).toList();
     showModalBottomSheet(
@@ -107,7 +134,7 @@ class _AddPlayPageState extends State<AddPlayPage> {
         repository: widget.repository,
         games: ownedGames,
         onSelected: (game) {
-          setState(() => _selectedGame = game);
+          _onGameSelected(game);
           Navigator.pop(context);
         },
       ),
@@ -132,6 +159,7 @@ class _AddPlayPageState extends State<AddPlayPage> {
       durationMinutes: int.tryParse(_durationController.text),
       playerScores: scores,
       winnerId: _manualWinnerId,
+      expansionIds: _selectedExpansions.toList(),
     );
     if (widget.existingPlay != null) {
       await widget.repository.updatePlayRecord(record);
@@ -186,6 +214,47 @@ class _AddPlayPageState extends State<AddPlayPage> {
               ),
             ),
             const SizedBox(height: 16),
+
+            if (_selectedGame != null) ...[
+              FutureBuilder<List<BoardGame>>(
+                future: Future.value(widget.repository.ownedGames.where((g) => g.parentGameId == _selectedGame!.id).toList()),
+                builder: (context, snapshot) {
+                  final expansions = snapshot.data ?? [];
+                  if (expansions.isEmpty) return const SizedBox.shrink();
+                  
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Expansions Used', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: expansions.map((expansion) {
+                          final isSelected = _selectedExpansions.contains(expansion.id);
+                          return FilterChip(
+                            avatar: expansion.customThumbnailUrl != null 
+                              ? CircleAvatar(backgroundImage: NetworkImage(expansion.customThumbnailUrl!)) 
+                              : null,
+                            label: Text(expansion.name),
+                            selected: isSelected,
+                            onSelected: (val) {
+                              setState(() {
+                                if (val) {
+                                  _selectedExpansions.add(expansion.id);
+                                } else {
+                                  _selectedExpansions.remove(expansion.id);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  );
+                },
+              ),
+            ],
             
             OutlinedButton.icon(
               onPressed: _selectDate,
