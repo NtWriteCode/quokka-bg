@@ -4,6 +4,8 @@ import 'package:quokka/pages/add_game_page.dart';
 import 'package:quokka/pages/verify_game_page.dart';
 import 'package:quokka/repositories/game_repository.dart';
 
+enum SortMode { name, dateAdded, playCount }
+
 class GamesListPage extends StatefulWidget {
   final GameRepository repository;
   final bool isWishlist;
@@ -11,6 +13,8 @@ class GamesListPage extends StatefulWidget {
 
   final bool showAppBar;
   final bool showFloatingActionButton;
+  final String? externalSearchQuery;
+  final SortMode? externalSortMode;
 
   const GamesListPage({
     super.key,
@@ -19,6 +23,8 @@ class GamesListPage extends StatefulWidget {
     required this.title,
     this.showAppBar = true,
     this.showFloatingActionButton = true,
+    this.externalSearchQuery,
+    this.externalSortMode,
   });
 
   @override
@@ -27,6 +33,10 @@ class GamesListPage extends StatefulWidget {
 
 class _GamesListPageState extends State<GamesListPage> {
   bool _isLoading = true;
+  bool _isSearchMode = false;
+  String _searchQuery = '';
+  SortMode _sortMode = SortMode.name;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -50,9 +60,20 @@ class _GamesListPageState extends State<GamesListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final List<BoardGame> gamesList = widget.isWishlist
+    final String currentSearchQuery = widget.externalSearchQuery ?? _searchQuery;
+    final SortMode currentSortMode = widget.externalSortMode ?? _sortMode;
+
+    List<BoardGame> gamesList = widget.isWishlist
         ? widget.repository.ownedGames.where((g) => g.status == GameStatus.wishlist).toList()
         : widget.repository.ownedGames.where((g) => g.status != GameStatus.wishlist).toList();
+
+    // 1. Filter by Search Query
+    if (currentSearchQuery.isNotEmpty) {
+      gamesList = gamesList.where((g) => g.name.toLowerCase().contains(currentSearchQuery.toLowerCase())).toList();
+    }
+
+    // 2. Initial Sort (Main Sort Mode)
+    _sortGames(gamesList, currentSortMode);
 
     // Sorting and grouping for collection only
     final List<Widget> children = [];
@@ -74,7 +95,54 @@ class _GamesListPageState extends State<GamesListPage> {
     }
 
     return Scaffold(
-      appBar: widget.showAppBar ? AppBar(title: Text(widget.title)) : null,
+      appBar: widget.showAppBar
+          ? AppBar(
+              title: _isSearchMode
+                  ? TextField(
+                      controller: _searchController,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        hintText: 'Search collection...',
+                        border: InputBorder.none,
+                      ),
+                      onChanged: (val) => setState(() => _searchQuery = val),
+                    )
+                  : Text(widget.title),
+              actions: [
+                IconButton(
+                  icon: Icon(_isSearchMode ? Icons.close : Icons.search),
+                  onPressed: () {
+                    setState(() {
+                      _isSearchMode = !_isSearchMode;
+                      if (!_isSearchMode) {
+                        _searchQuery = '';
+                        _searchController.clear();
+                      }
+                    });
+                  },
+                ),
+                PopupMenuButton<SortMode>(
+                  icon: const Icon(Icons.sort),
+                  tooltip: 'Sort By',
+                  onSelected: (mode) => setState(() => _sortMode = mode),
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                        value: SortMode.name,
+                        child: Text('A-Z (Name)',
+                            style: TextStyle(fontWeight: currentSortMode == SortMode.name ? FontWeight.bold : FontWeight.normal))),
+                    PopupMenuItem(
+                        value: SortMode.dateAdded,
+                        child: Text('Newest First',
+                            style: TextStyle(fontWeight: currentSortMode == SortMode.dateAdded ? FontWeight.bold : FontWeight.normal))),
+                    PopupMenuItem(
+                        value: SortMode.playCount,
+                        child: Text('Most Played',
+                            style: TextStyle(fontWeight: currentSortMode == SortMode.playCount ? FontWeight.bold : FontWeight.normal))),
+                  ],
+                ),
+              ],
+            )
+          : null,
       floatingActionButton: widget.showFloatingActionButton
           ? FloatingActionButton(
               onPressed: () async {
@@ -118,10 +186,30 @@ class _GamesListPageState extends State<GamesListPage> {
     ];
   }
 
+  void _sortGames(List<BoardGame> games, SortMode mode) {
+    switch (mode) {
+      case SortMode.name:
+        games.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        break;
+      case SortMode.dateAdded:
+        games.sort((a, b) => b.dateAdded.compareTo(a.dateAdded));
+        break;
+      case SortMode.playCount:
+        games.sort((a, b) {
+          final countA = widget.repository.getPlayCountForGame(a.id);
+          final countB = widget.repository.getPlayCountForGame(b.id);
+          return countB.compareTo(countA);
+        });
+        break;
+    }
+  }
+
   List<BoardGame> _sortGamesWithExpansions(List<BoardGame> games) {
+    final SortMode currentSortMode = widget.externalSortMode ?? _sortMode;
+
     // 1. Separate base games and expansions
-    final baseGames = games.where((g) => !g.isExpansion).toList()
-      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final baseGames = games.where((g) => !g.isExpansion).toList();
+    _sortGames(baseGames, currentSortMode);
     
     final expansions = games.where((g) => g.isExpansion).toList();
     
@@ -130,15 +218,15 @@ class _GamesListPageState extends State<GamesListPage> {
     // 2. Put expansions after their parents
     for (var base in baseGames) {
       result.add(base);
-      final relatedExpansions = expansions.where((e) => e.parentGameId == base.id).toList()
-        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      final relatedExpansions = expansions.where((e) => e.parentGameId == base.id).toList();
+      _sortGames(relatedExpansions, currentSortMode);
       result.addAll(relatedExpansions);
     }
     
     // 3. Add orphaned expansions at the end
     final addedIds = result.map((g) => g.id).toSet();
-    final orphans = expansions.where((e) => !addedIds.contains(e.id)).toList()
-      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final orphans = expansions.where((e) => !addedIds.contains(e.id)).toList();
+    _sortGames(orphans, currentSortMode);
     result.addAll(orphans);
     
     return result;
@@ -255,6 +343,7 @@ class _GamesListPageState extends State<GamesListPage> {
   @override
   void dispose() {
     widget.repository.removeListener(_onRepositoryChanged);
+    _searchController.dispose();
     super.dispose();
   }
 }
