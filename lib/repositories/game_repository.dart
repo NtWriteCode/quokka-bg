@@ -18,6 +18,10 @@ class GameRepository extends ChangeNotifier {
   List<PlayRecord> _playRecords = [];
   
   UserStats _userStats = UserStats();
+  
+  // Session Caches
+  final Map<String, List<Map<String, dynamic>>> _searchCache = {};
+  final Map<String, Map<String, dynamic>> _detailsCache = {};
   final _syncService = SyncService();
   int _dataVersion = 0;
   bool _showUnownedGames = true;
@@ -500,6 +504,11 @@ class GameRepository extends ChangeNotifier {
   }
 
   Future<List<Map<String, dynamic>>> searchBgg(String query) async {
+    final lowerQuery = query.toLowerCase().trim();
+    if (_searchCache.containsKey(lowerQuery)) {
+      return _searchCache[lowerQuery]!;
+    }
+
     final uri = Uri.parse('https://boardgamegeek.com/search/boardgame')
         .replace(queryParameters: {
       'q': query,
@@ -519,7 +528,9 @@ class GameRepository extends ChangeNotifier {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['items'] is List) {
-           return List<Map<String, dynamic>>.from(data['items']);
+           final results = List<Map<String, dynamic>>.from(data['items']);
+           _searchCache[lowerQuery] = results;
+           return results;
         }
       }
       return [];
@@ -529,6 +540,10 @@ class GameRepository extends ChangeNotifier {
   }
   
   Future<Map<String, dynamic>?> fetchGameDetails(String gameId) async {
+    if (_detailsCache.containsKey(gameId)) {
+      return _detailsCache[gameId];
+    }
+
     final uri = Uri.parse('https://boardgamegeek.com/boardgame/$gameId');
 
     try {
@@ -549,7 +564,11 @@ class GameRepository extends ChangeNotifier {
           final jsonString = match.group(1);
           if (jsonString != null) {
              try {
-               return jsonDecode(jsonString);
+               final data = jsonDecode(jsonString);
+               if (data is Map<String, dynamic>) {
+                 _detailsCache[gameId] = data;
+                 return data;
+               }
              } catch (e) {
                print('DEBUG: JSON Decode Error: $e');
              }

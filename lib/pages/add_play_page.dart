@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:quokka/models/board_game.dart';
+import 'package:quokka/services/image_cache_manager.dart';
 import 'package:quokka/models/player.dart';
 import 'package:quokka/models/play_record.dart';
 import 'package:quokka/repositories/game_repository.dart';
@@ -191,7 +193,14 @@ class _AddPlayPageState extends State<AddPlayPage> {
                   children: recent.map((game) => Padding(
                     padding: const EdgeInsets.only(right: 8.0),
                     child: ActionChip(
-                      avatar: game.customThumbnailUrl != null ? CircleAvatar(backgroundImage: NetworkImage(game.customThumbnailUrl!)) : null,
+                      avatar: game.customThumbnailUrl != null 
+                        ? CircleAvatar(
+                            backgroundImage: CachedNetworkImageProvider(
+                              game.customThumbnailUrl!,
+                              cacheManager: QuokkaCacheManager.instance,
+                            ),
+                          ) 
+                        : null,
                       label: Text(game.name),
                       onPressed: () => setState(() => _selectedGame = game),
                     ),
@@ -233,7 +242,12 @@ class _AddPlayPageState extends State<AddPlayPage> {
                           final isSelected = _selectedExpansions.contains(expansion.id);
                           return FilterChip(
                             avatar: expansion.customThumbnailUrl != null 
-                              ? CircleAvatar(backgroundImage: NetworkImage(expansion.customThumbnailUrl!)) 
+                              ? CircleAvatar(
+                                  backgroundImage: CachedNetworkImageProvider(
+                                    expansion.customThumbnailUrl!,
+                                    cacheManager: QuokkaCacheManager.instance,
+                                  ),
+                                ) 
                               : null,
                             label: Text(expansion.name),
                             selected: isSelected,
@@ -491,7 +505,18 @@ class _GamePickerSheetState extends State<_GamePickerSheet> {
                         final game = filtered[index];
                         return ListTile(
                           leading: game.customThumbnailUrl != null 
-                            ? ClipRRect(borderRadius: BorderRadius.circular(4), child: Image.network(game.customThumbnailUrl!, width: 40, height: 40, fit: BoxFit.cover))
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(4), 
+                                child: CachedNetworkImage(
+                                  imageUrl: game.customThumbnailUrl!,
+                                  width: 40,
+                                  height: 40,
+                                  fit: BoxFit.cover,
+                                  cacheManager: QuokkaCacheManager.instance,
+                                  placeholder: (context, url) => Container(width: 40, height: 40, color: Colors.grey[200]),
+                                  errorWidget: (context, url, error) => const Icon(Icons.error),
+                                ),
+                              )
                             : const Icon(Icons.videogame_asset),
                           title: Text(game.name),
                           onTap: () => widget.onSelected(game),

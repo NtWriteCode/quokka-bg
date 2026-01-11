@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:quokka/models/board_game.dart';
+import 'package:quokka/services/image_cache_manager.dart';
 import 'package:quokka/pages/add_game_page.dart';
 import 'package:quokka/pages/verify_game_page.dart';
 import 'package:quokka/repositories/game_repository.dart';
@@ -235,8 +237,13 @@ class _GamesListPageState extends State<GamesListPage> {
   Widget _buildGameTile(BoardGame game) {
     return ListTile(
       leading: game.customThumbnailUrl != null
-          ? Image.network(game.customThumbnailUrl!,
-              width: 50, errorBuilder: (_, __, ___) => const Icon(Icons.image))
+          ? CachedNetworkImage(
+              imageUrl: game.customThumbnailUrl!,
+              width: 50,
+              cacheManager: QuokkaCacheManager.instance,
+              placeholder: (context, url) => Container(width: 50, color: Colors.grey[200]),
+              errorWidget: (context, url, error) => const Icon(Icons.error),
+            )
           : const Icon(Icons.videogame_asset),
       title: Row(
         children: [

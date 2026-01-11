@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:quokka/models/board_game.dart';
+import 'package:quokka/services/image_cache_manager.dart';
 import 'package:quokka/repositories/game_repository.dart';
 import 'package:html_unescape/html_unescape.dart';
 
@@ -273,11 +275,13 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
                     ),
 
                   if (game?.customImageUrl != null)
-                    Image.network(
-                      game!.customImageUrl!,
+                    CachedNetworkImage(
+                      imageUrl: game!.customImageUrl!,
                       height: 300,
                       fit: BoxFit.contain,
-                      errorBuilder: (c, e, s) => const Icon(Icons.broken_image, size: 100),
+                      cacheManager: QuokkaCacheManager.instance,
+                      placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                      errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 100),
                     )
                   else
                     const Icon(Icons.image_not_supported, size: 100),

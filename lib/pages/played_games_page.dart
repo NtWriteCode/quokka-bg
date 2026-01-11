@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:quokka/models/play_record.dart';
+import 'package:quokka/services/image_cache_manager.dart';
 import 'package:quokka/pages/add_play_page.dart';
 import 'package:quokka/repositories/game_repository.dart';
 import 'package:quokka/models/play_filter.dart';
@@ -141,11 +143,18 @@ class _PlayedGamesPageState extends State<PlayedGamesPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               if (play.gameThumbnailUrl != null)
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: Image.network(play.gameThumbnailUrl!,
-                                      width: 60, height: 60, fit: BoxFit.cover),
-                                )
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: CachedNetworkImage(
+                                      imageUrl: play.gameThumbnailUrl!,
+                                      width: 60,
+                                      height: 60,
+                                      fit: BoxFit.cover,
+                                      cacheManager: QuokkaCacheManager.instance,
+                                      placeholder: (context, url) => Container(width: 60, height: 60, color: Colors.grey[200]),
+                                      errorWidget: (context, url, error) => const Icon(Icons.error),
+                                    ),
+                                  )
                               else
                                 const SizedBox(
                                     width: 60,
