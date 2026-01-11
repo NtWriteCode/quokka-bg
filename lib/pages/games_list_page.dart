@@ -184,7 +184,7 @@ class _GamesListPageState extends State<GamesListPage> {
               ),
         ),
       ),
-      ...sortedGames.map((game) => _buildGameTile(game)),
+      ...sortedGames.map((game) => _buildGameTile(game, sortedGames)),
     ];
   }
 
@@ -209,32 +209,35 @@ class _GamesListPageState extends State<GamesListPage> {
   List<BoardGame> _sortGamesWithExpansions(List<BoardGame> games) {
     final SortMode currentSortMode = widget.externalSortMode ?? _sortMode;
 
-    // 1. Separate base games and expansions
-    final baseGames = games.where((g) => !g.isExpansion).toList();
-    _sortGames(baseGames, currentSortMode);
-    
-    final expansions = games.where((g) => g.isExpansion).toList();
+    // 1. Separate into "Roots" and "Children"
+    // A Root is any base game, OR an expansion whose parent is NOT in the current list
+    final rootItems = games.where((g) {
+      if (!g.isExpansion) return true;
+      return !games.any((other) => other.id == g.parentGameId);
+    }).toList();
+    _sortGames(rootItems, currentSortMode);
+
+    final children = games.where((g) => g.isExpansion && games.any((other) => other.id == g.parentGameId)).toList();
     
     final List<BoardGame> result = [];
     
-    // 2. Put expansions after their parents
-    for (var base in baseGames) {
-      result.add(base);
-      final relatedExpansions = expansions.where((e) => e.parentGameId == base.id).toList();
-      _sortGames(relatedExpansions, currentSortMode);
-      result.addAll(relatedExpansions);
+    // 2. Interleave
+    for (var root in rootItems) {
+      result.add(root);
+      final relatedChildren = children.where((e) => e.parentGameId == root.id).toList();
+      if (relatedChildren.isNotEmpty) {
+        _sortGames(relatedChildren, currentSortMode);
+        result.addAll(relatedChildren);
+      }
     }
-    
-    // 3. Add orphaned expansions at the end
-    final addedIds = result.map((g) => g.id).toSet();
-    final orphans = expansions.where((e) => !addedIds.contains(e.id)).toList();
-    _sortGames(orphans, currentSortMode);
-    result.addAll(orphans);
     
     return result;
   }
 
-  Widget _buildGameTile(BoardGame game) {
+  Widget _buildGameTile(BoardGame game, List<BoardGame> currentList) {
+    // An expansion is indented ONLY if its parent is actually in the list we are looking at
+    final bool shouldIndent = game.isExpansion && currentList.any((g) => g.id == game.parentGameId);
+
     return ListTile(
       leading: game.customThumbnailUrl != null
           ? CachedNetworkImage(
@@ -247,15 +250,15 @@ class _GamesListPageState extends State<GamesListPage> {
           : const Icon(Icons.videogame_asset),
       title: Row(
         children: [
-          if (game.isExpansion)
+          if (shouldIndent)
             const Padding(
               padding: EdgeInsets.only(right: 4.0),
               child: Text('↳', style: TextStyle(color: Colors.grey, fontSize: 18, fontWeight: FontWeight.bold)),
             ),
-          Expanded(child: Text(game.name, style: TextStyle(fontSize: game.isExpansion ? 14 : 16))),
+          Expanded(child: Text(game.name, style: TextStyle(fontSize: shouldIndent ? 14 : 16))),
         ],
       ),
-      contentPadding: EdgeInsets.only(left: game.isExpansion ? 32.0 : 16.0, right: 16.0),
+      contentPadding: EdgeInsets.only(left: shouldIndent ? 32.0 : 16.0, right: 16.0),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
