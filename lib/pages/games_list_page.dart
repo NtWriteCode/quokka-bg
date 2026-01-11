@@ -93,7 +93,7 @@ class _GamesListPageState extends State<GamesListPage> {
       }
     } else {
       final sortedWishlist = _sortGamesWithExpansions(gamesList);
-      children.addAll(sortedWishlist.map((g) => _buildGameTile(g)));
+      children.addAll(sortedWishlist.map((g) => _buildGameTile(g, sortedWishlist)));
     }
 
     return Scaffold(

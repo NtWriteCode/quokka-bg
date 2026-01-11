@@ -30,10 +30,14 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
   String? _selectedTitle;
   String? _searchTitle;
   String? _detailTitle;
-
+  bool _isEditing = false;
+  
   // Input controllers
+  late final TextEditingController _nameController;
   final _priceController = TextEditingController();
   final _commentController = TextEditingController();
+  
+  BoardGame? _parentGame;
   String _selectedCurrency = 'HUF';
   bool _isNew = true;
   DateTime? _purchaseDate;
@@ -48,6 +52,7 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
     if (widget.existingGame != null) {
       _gameDetails = widget.existingGame;
       _selectedTitle = _gameDetails!.name;
+      _nameController = TextEditingController(text: _selectedTitle);
       _isLoading = false;
       // Initialize inputs from existing game
       _priceController.text = _gameDetails!.price?.toString() ?? '';
@@ -57,7 +62,16 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
       _purchaseDate = _gameDetails!.purchaseDate;
       _isExpansion = _gameDetails!.isExpansion;
       _parentGameId = _gameDetails!.parentGameId;
+      
+      if (_parentGameId != null) {
+        try {
+          _parentGame = widget.repository.ownedGames.firstWhere((g) => g.id == _parentGameId);
+        } catch (_) {
+          _parentGame = null;
+        }
+      }
     } else {
+      _nameController = TextEditingController();
       _searchTitle = widget.searchResult!['localizedname'] ?? widget.searchResult!['name'];
       _loadDetails();
     }
@@ -65,6 +79,7 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _priceController.dispose();
     _commentController.dispose();
     super.dispose();
@@ -88,6 +103,7 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
             }
             // Default to search title (localized), but keep detail title for choice if different
             _selectedTitle = _searchTitle ?? _detailTitle;
+            _nameController.text = _selectedTitle ?? '';
             _isExpansion = details?.isExpansion ?? false;
             _parentGameId = details?.parentGameId;
             _isLoading = false;
@@ -100,6 +116,7 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
               thumbnailUrl: null,
             );
             _selectedTitle = _searchTitle;
+            _nameController.text = _selectedTitle ?? '';
             _errorMessage = "Could not fetch full details, adding with basic info.";
             _isLoading = false;
           });
@@ -112,6 +129,30 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _saveChanges() async {
+    if (_gameDetails == null) return;
+
+    final updatedGame = _gameDetails!.copyWith(
+      name: _nameController.text,
+      price: double.tryParse(_priceController.text),
+      currency: _selectedCurrency,
+      isNew: _isNew,
+      purchaseDate: _purchaseDate,
+      comment: _commentController.text,
+      isExpansion: _isExpansion,
+      parentGameId: _parentGameId,
+    );
+
+    await widget.repository.updateGame(updatedGame);
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Game updated successfully!')),
+      );
+      Navigator.pop(context);
     }
   }
 
@@ -134,7 +175,7 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
       // Create a final version of the game with the purchase details
       final finalGame = BoardGame(
         id: _gameDetails!.id,
-        name: _selectedTitle ?? _gameDetails!.name,
+        name: _isEditing ? _nameController.text : (_selectedTitle ?? _gameDetails!.name),
         description: _gameDetails!.description,
         yearPublished: _gameDetails!.yearPublished,
         minPlayers: _gameDetails!.minPlayers,
@@ -223,7 +264,8 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
     
     final game = _gameDetails;
     // Show purchase section if we are NOT adding to wishlist AND (it's a new game OR it's a conversion OR it's already owned)
-    final showPurchaseSection = !widget.isWishlist && (widget.existingGame != null ? (game?.status != GameStatus.wishlist || isConversion) : true);
+    // ALSO show if we are in Edit Mode
+    final showPurchaseSection = _isEditing || (!widget.isWishlist && (widget.existingGame != null ? (game?.status != GameStatus.wishlist || isConversion) : true));
     
     final name = game?.name ?? widget.searchResult?['name'] ?? 'Unknown';
     final year = game?.yearPublished?.toString() ?? widget.searchResult?['yearpublished']?.toString() ?? '?';
@@ -233,8 +275,16 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
         title: Text(
           isConversion 
             ? 'Move to Collection' 
-            : (isViewMode ? 'Game Details' : (widget.isWishlist ? 'Add to Wishlist' : 'Verify Game Details'))
-        )
+            : (isViewMode ? (_isEditing ? 'Edit Game' : 'Game Details') : (widget.isWishlist ? 'Add to Wishlist' : 'Verify Game Details'))
+        ),
+        actions: [
+          if (widget.existingGame != null && !isConversion)
+            IconButton(
+              icon: Icon(_isEditing ? Icons.visibility : Icons.edit),
+              onPressed: () => setState(() => _isEditing = !_isEditing),
+              tooltip: _isEditing ? 'View Details' : 'Edit Game',
+            ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -287,24 +337,80 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
                     const Icon(Icons.image_not_supported, size: 100),
                   
                   const SizedBox(height: 24),
-                  Text(
-                    _selectedTitle ?? name,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                    textAlign: TextAlign.center,
-                  ),
+                  if (_isEditing || !isViewMode)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: TextField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Game Name',
+                          border: OutlineInputBorder(),
+                        ),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    )
+                  else
+                    Text(
+                      _selectedTitle ?? name,
+                      style: Theme.of(context).textTheme.headlineMedium,
+                      textAlign: TextAlign.center,
+                    ),
                   Text(
                     'Published: $year',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
-                  if (!isViewMode)
+                  if (_isEditing || !isViewMode) ...[
                     SwitchListTile(
                       title: const Text('Is Expansion?'),
                       subtitle: const Text('Check this if this game is an expansion for another game'),
                       value: _isExpansion,
-                      onChanged: (val) => setState(() => _isExpansion = val),
+                      onChanged: (val) => setState(() {
+                        _isExpansion = val;
+                        if (!val) {
+                          _parentGame = null;
+                          _parentGameId = null;
+                        }
+                      }),
                     ),
+                    if (_isExpansion)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Autocomplete<BoardGame>(
+                          displayStringForOption: (option) => option.name,
+                          initialValue: TextEditingValue(text: _parentGame?.name ?? ''),
+                          optionsBuilder: (TextEditingValue textEditingValue) {
+                            if (textEditingValue.text.isEmpty) {
+                              return widget.repository.ownedGames.where((g) => !g.isExpansion && g.id != _gameDetails?.id);
+                            }
+                            return widget.repository.ownedGames.where((g) =>
+                                !g.isExpansion &&
+                                g.id != _gameDetails?.id &&
+                                g.name.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+                          },
+                          onSelected: (BoardGame selection) {
+                            setState(() {
+                              _parentGame = selection;
+                              _parentGameId = selection.id;
+                            });
+                          },
+                          fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                            return TextField(
+                              controller: controller,
+                              focusNode: focusNode,
+                              decoration: const InputDecoration(
+                                labelText: 'Parent Game',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.search),
+                                hintText: 'Search for base game...',
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
                   if (isViewMode && _isExpansion)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -391,7 +497,7 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
                       const Text('Purchase Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                       const SizedBox(height: 16),
                       
-                      if (!isViewMode) ...[
+                      if (_isEditing || !isViewMode) ...[
                       Row(
                         children: [
                           Expanded(
@@ -458,12 +564,16 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
                       Text(_stripHtml(game.description!), style: const TextStyle(height: 1.4)),
                     ],
                   ],
-                  if (!isViewMode) ...[
+                  if (_isEditing || !isViewMode) ...[
                     const SizedBox(height: 32),
                     ElevatedButton.icon(
-                      onPressed: _addGame,
+                      onPressed: _isEditing ? _saveChanges : _addGame,
                       icon: const Icon(Icons.check),
-                      label: Text(isConversion ? 'Confirm Purchase and Move' : 'Confirm and Add to Collection'),
+                      label: Text(
+                        _isEditing 
+                          ? 'Save Changes' 
+                          : (isConversion ? 'Confirm Purchase and Move' : (widget.isWishlist ? 'Add to Wishlist' : 'Confirm and Add to Collection'))
+                      ),
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size.fromHeight(50),
                         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
