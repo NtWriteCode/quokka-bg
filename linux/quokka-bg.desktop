@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Quokka BG
+Comment=Modern board game collection and play tracker with stats and sync
+Exec=QuokkaBG
+Icon=quokka_icon_512
+Type=Application
+Categories=Game;Utility;
+Terminal=false
+StartupNotify=true
+StartupWMClass=QuokkaBG
+X-AppImage-Version=1.0.0
