@@ -1,4 +1,3 @@
-import 'package:quokka/models/board_game.dart';
 
 enum AchievementTier { bronze, silver, gold }
 
@@ -73,6 +72,10 @@ class UserStats {
   final int wishlistConversions;
   final int totalPlays;
   final int totalWins;
+  
+  // Customization
+  final String? customTitle; // null means use level-based title
+  final int? customBackgroundTier; // null means use level-based background
 
   UserStats({
     this.totalXp = 0,
@@ -84,6 +87,8 @@ class UserStats {
     this.wishlistConversions = 0,
     this.totalPlays = 0,
     this.totalWins = 0,
+    this.customTitle,
+    this.customBackgroundTier,
   });
 
   int get xpForNextLevel => 99 + (level + 1);
@@ -98,6 +103,8 @@ class UserStats {
     int? wishlistConversions,
     int? totalPlays,
     int? totalWins,
+    Object? customTitle = _notProvided,
+    Object? customBackgroundTier = _notProvided,
   }) {
     return UserStats(
       totalXp: totalXp ?? this.totalXp,
@@ -109,8 +116,12 @@ class UserStats {
       wishlistConversions: wishlistConversions ?? this.wishlistConversions,
       totalPlays: totalPlays ?? this.totalPlays,
       totalWins: totalWins ?? this.totalWins,
+      customTitle: customTitle == _notProvided ? this.customTitle : customTitle as String?,
+      customBackgroundTier: customBackgroundTier == _notProvided ? this.customBackgroundTier : customBackgroundTier as int?,
     );
   }
+
+  static const _notProvided = Object();
 
   Map<String, dynamic> toJson() => {
         'totalXp': totalXp,
@@ -122,6 +133,8 @@ class UserStats {
         'wishlistConversions': wishlistConversions,
         'totalPlays': totalPlays,
         'totalWins': totalWins,
+        'customTitle': customTitle,
+        'customBackgroundTier': customBackgroundTier,
       };
 
   factory UserStats.fromJson(Map<String, dynamic> json) => UserStats(
@@ -134,5 +147,7 @@ class UserStats {
         wishlistConversions: json['wishlistConversions'] ?? 0,
         totalPlays: json['totalPlays'] ?? 0,
         totalWins: json['totalWins'] ?? 0,
+        customTitle: json['customTitle'],
+        customBackgroundTier: json['customBackgroundTier'],
       );
 }

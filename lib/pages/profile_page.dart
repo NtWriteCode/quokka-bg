@@ -4,6 +4,8 @@ import 'package:quokka/models/user_stats.dart';
 import 'package:quokka/services/achievement_service.dart';
 import 'package:quokka/pages/settings_page.dart';
 import 'package:quokka/models/player.dart';
+import 'package:quokka/helpers/title_helper.dart';
+import 'package:quokka/widgets/gradient_background.dart';
 import 'dart:math';
 
 class ProfilePage extends StatefulWidget {
@@ -31,6 +33,16 @@ class _ProfilePageState extends State<ProfilePage> {
   void dispose() {
     widget.repository.removeListener(_onRepositoryChanged);
     super.dispose();
+  }
+
+  void _showCustomizationDialog(UserStats stats) async {
+    await showDialog(
+      context: context,
+      builder: (context) => _CustomizationDialog(
+        repository: widget.repository,
+        stats: stats,
+      ),
+    );
   }
 
   void _showAddPlayerDialog() {
@@ -264,32 +276,83 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildLevelHeader(UserStats stats, double progress) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: Theme.of(context).primaryColor,
-              child: Text('${stats.level}', 
-                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+    final title = stats.customTitle ?? TitleHelper.getTitleForLevel(stats.level);
+    final gradient = stats.customBackgroundTier != null 
+        ? TitleHelper.getBackgroundForLevel(stats.customBackgroundTier! * 5)
+        : TitleHelper.getBackgroundForLevel(stats.level);
+    final tier = stats.customBackgroundTier ?? (stats.level / 5).floor();
+    
+    return GestureDetector(
+      onTap: () => _showCustomizationDialog(stats),
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: GradientBackground(
+          gradient: gradient,
+          tier: tier,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const SizedBox(width: 40), // Balance for icon
+                    Expanded(
+                      child: Column(
+                        children: [
+                          CircleAvatar(
+                            radius: 40,
+                            backgroundColor: Colors.white.withOpacity(0.3),
+                            child: Text('${stats.level}', 
+                                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              shadows: [Shadow(blurRadius: 2, color: Colors.black45)],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.edit, color: Colors.white70, size: 20),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 12,
+                      backgroundColor: Colors.transparent,
+                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${stats.totalXp} / ${stats.xpForNextLevel} XP',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    shadows: [Shadow(blurRadius: 2, color: Colors.black45)],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            const Text('Level', style: TextStyle(fontSize: 16, color: Colors.grey)),
-            const SizedBox(height: 16),
-            LinearProgressIndicator(
-              value: progress,
-              minHeight: 12,
-              borderRadius: BorderRadius.circular(6),
-              backgroundColor: Colors.grey[200],
-            ),
-            const SizedBox(height: 8),
-            Text('${stats.totalXp} / ${stats.xpForNextLevel} XP', 
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-          ],
+          ),
         ),
       ),
     );
@@ -479,6 +542,291 @@ class _ProfilePageState extends State<ProfilePage> {
               : 'Show All (${stats.xpHistory.length} entries)'),
           ),
       ],
+    );
+  }
+}
+
+class _CustomizationDialog extends StatefulWidget {
+  final GameRepository repository;
+  final UserStats stats;
+
+  const _CustomizationDialog({
+    required this.repository,
+    required this.stats,
+  });
+
+  @override
+  State<_CustomizationDialog> createState() => _CustomizationDialogState();
+}
+
+class _CustomizationDialogState extends State<_CustomizationDialog> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  String? _selectedTitle;
+  int? _selectedBackgroundTier;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _selectedTitle = widget.stats.customTitle;
+    _selectedBackgroundTier = widget.stats.customBackgroundTier;
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _saveCustomization() async {
+    final updatedStats = widget.stats.copyWith(
+      customTitle: _selectedTitle,
+      customBackgroundTier: _selectedBackgroundTier,
+    );
+    
+    // Update the stats through repository
+    await widget.repository.updateUserStatsCustomization(updatedStats);
+    
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final unlockedTitles = TitleHelper.getUnlockedTitles(widget.stats.level);
+    final currentTitle = TitleHelper.getTitleForLevel(widget.stats.level);
+    final unlockedBackgrounds = TitleHelper.getUnlockedBackgrounds(widget.stats.level);
+    final maxTier = (widget.stats.level / 5).floor();
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        constraints: const BoxConstraints(maxHeight: 600, maxWidth: 500),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Customize Profile',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            TabBar(
+              controller: _tabController,
+              tabs: const [
+                Tab(text: 'Title'),
+                Tab(text: 'Background'),
+              ],
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildTitleSelection(unlockedTitles, currentTitle),
+                  _buildBackgroundSelection(unlockedBackgrounds, maxTier),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _selectedTitle = null;
+                        _selectedBackgroundTier = null;
+                      });
+                    },
+                    child: const Text('Reset to Default'),
+                  ),
+                  ElevatedButton(
+                    onPressed: _saveCustomization,
+                    child: const Text('Save'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTitleSelection(List<String> unlockedTitles, String currentTitle) {
+    // Determine if user wants default (null) or explicitly selected current title
+    final isUsingDefault = _selectedTitle == null;
+    
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Auto (use current level title)
+        Card(
+          color: isUsingDefault ? Colors.green.shade50 : null,
+          child: RadioListTile<String?>(
+            title: Text(currentTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: const Text('Auto (current level title)'),
+            value: null,
+            groupValue: _selectedTitle,
+            onChanged: (val) => setState(() => _selectedTitle = val),
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Text('Unlocked Titles:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        ...unlockedTitles.reversed.map((title) {
+          final isSelected = _selectedTitle == title;
+          return Card(
+            color: isSelected ? Colors.blue.shade50 : null,
+            child: RadioListTile<String?>(
+              title: Text(title),
+              subtitle: title == currentTitle ? const Text('Current level') : null,
+              value: title,
+              groupValue: _selectedTitle,
+              onChanged: (val) => setState(() => _selectedTitle = val),
+            ),
+          );
+        }).toList(),
+      ],
+    );
+  }
+
+  Widget _buildBackgroundSelection(List<LinearGradient> unlockedBackgrounds, int maxTier) {
+    // Group backgrounds by theme
+    final categories = [
+      {'name': '🌍 Earth (Lv 1-19)', 'start': 0, 'end': 3},
+      {'name': '🌊 Ocean (Lv 20-39)', 'start': 4, 'end': 7},
+      {'name': '🔥 Fire (Lv 40-59)', 'start': 8, 'end': 11},
+      {'name': '👑 Royal (Lv 60-79)', 'start': 12, 'end': 15},
+      {'name': '🌌 Cosmic (Lv 80-100+)', 'start': 16, 'end': 20},
+    ];
+    
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: categories.map((category) {
+        final categoryName = category['name'] as String;
+        final start = category['start'] as int;
+        final end = category['end'] as int;
+        
+        // Filter unlocked backgrounds for this category
+        final categoryBackgrounds = <int>[];
+        for (int i = start; i <= end && i < unlockedBackgrounds.length; i++) {
+          categoryBackgrounds.add(i);
+        }
+        
+        if (categoryBackgrounds.isEmpty) return const SizedBox.shrink();
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Text(
+                categoryName,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 1.5,
+              ),
+              itemCount: categoryBackgrounds.length,
+              itemBuilder: (context, idx) {
+                final index = categoryBackgrounds[idx];
+                final gradient = unlockedBackgrounds[index];
+                final tierName = TitleHelper.getTierNameForLevel(index * 5);
+                final isCurrentTier = index == (widget.stats.level / 5).floor();
+                final isSelected = _selectedBackgroundTier == index;
+                
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedBackgroundTier = index),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected 
+                            ? Colors.blue 
+                            : (isCurrentTier ? Colors.green : Colors.grey.shade300),
+                        width: isSelected ? 3 : (isCurrentTier ? 2 : 1),
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: GradientBackground(
+                        gradient: gradient,
+                        tier: index,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Stack(
+                          children: [
+                            Positioned(
+                              bottom: 8,
+                              left: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.6),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  tierName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                            if (isCurrentTier)
+                              const Positioned(
+                                top: 8,
+                                right: 8,
+                                child: Icon(Icons.star, color: Colors.white, size: 20),
+                              ),
+                            if (isSelected)
+                              const Positioned(
+                                top: 8,
+                                left: 8,
+                                child: Icon(Icons.check_circle, color: Colors.blue, size: 24),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        );
+      }).toList(),
     );
   }
 }

@@ -46,7 +46,8 @@ class GameRepository extends ChangeNotifier {
   
   Future<void> addXp(int amount, String reason) async {
     int newXp = _userStats.totalXp + amount;
-    int newLevel = _userStats.level;
+    int oldLevel = _userStats.level;
+    int newLevel = oldLevel;
     
     while (newXp >= (99 + (newLevel + 1))) {
       newXp -= (99 + (newLevel + 1));
@@ -62,6 +63,18 @@ class GameRepository extends ChangeNotifier {
       ].take(100).toList(), // Keep last 100 entries
     );
     await saveUserStats();
+    
+    // Check if level changed and trigger title/background notifications
+    if (newLevel > oldLevel) {
+      _notifyLevelUp(oldLevel, newLevel);
+    }
+  }
+
+  void _notifyLevelUp(int oldLevel, int newLevel) {
+    // This can be listened to by the UI to show a level-up dialog/snackbar
+    // For now, just print for debugging
+    print('DEBUG: Level up! $oldLevel → $newLevel');
+    // TODO: Implement level-up notification system if needed
   }
 
   Future<void> checkAchievements() async {
@@ -354,6 +367,11 @@ class GameRepository extends ChangeNotifier {
     } catch (e) {
       print('DEBUG: Error saving stats: $e');
     }
+  }
+
+  Future<void> updateUserStatsCustomization(UserStats updatedStats) async {
+    _userStats = updatedStats;
+    await saveUserStats();
   }
 
   Future<void> triggerManualSyncUp() async {
