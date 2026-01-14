@@ -175,7 +175,7 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
       // Create a final version of the game with the purchase details
       final finalGame = BoardGame(
         id: _gameDetails!.id,
-        name: _isEditing ? _nameController.text : (_selectedTitle ?? _gameDetails!.name),
+        name: _nameController.text,
         description: _gameDetails!.description,
         yearPublished: _gameDetails!.yearPublished,
         minPlayers: _gameDetails!.minPlayers,
@@ -450,7 +450,10 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
                             subtitle: const Text('From your search (e.g. Hungarian)', style: TextStyle(fontSize: 12)),
                             value: _searchTitle!,
                             groupValue: _selectedTitle,
-                            onChanged: (val) => setState(() => _selectedTitle = val),
+                            onChanged: (val) => setState(() {
+                              _selectedTitle = val;
+                              _nameController.text = val ?? '';
+                            }),
                             contentPadding: EdgeInsets.zero,
                             dense: true,
                           ),
@@ -459,7 +462,10 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
                             subtitle: const Text('From BGG database (International)', style: TextStyle(fontSize: 12)),
                             value: _detailTitle!,
                             groupValue: _selectedTitle,
-                            onChanged: (val) => setState(() => _selectedTitle = val),
+                            onChanged: (val) => setState(() {
+                              _selectedTitle = val;
+                              _nameController.text = val ?? '';
+                            }),
                             contentPadding: EdgeInsets.zero,
                             dense: true,
                           ),
@@ -511,7 +517,7 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: _selectedCurrency,
+                              initialValue: _selectedCurrency,
                               decoration: const InputDecoration(labelText: 'Currency', border: OutlineInputBorder()),
                               items: _currencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                               onChanged: (val) => setState(() => _selectedCurrency = val!),
