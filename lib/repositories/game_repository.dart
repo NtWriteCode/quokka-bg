@@ -128,6 +128,8 @@ class GameRepository extends ChangeNotifier {
   }
 
   Future<void> recalculateXp() async {
+    await _preSaveSync();
+    
     int totalXp = 0;
     
     // 1. Calculate XP from games

@@ -36,54 +36,138 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveSyncSettings() async {
-    // Optional: Warn if test wasn't successful, but allow saving anyway
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Save Credentials?'),
-        content: const Text('Saving these credentials will overwrite any existing sync settings. It is recommended to test the connection first.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save')),
-        ],
-      )
-    );
-
-    if (confirm != true) return;
-
-    // Show loading
-    if (mounted) {
-      showDialog(
+    // Check if user has local data
+    final hasLocalData = widget.repository.ownedGames.isNotEmpty || 
+                        widget.repository.players.isNotEmpty || 
+                        widget.repository.playRecords.isNotEmpty;
+    
+    // First, ask what to do with local data
+    if (hasLocalData) {
+      final choice = await showDialog<String>(
         context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
+        builder: (context) => AlertDialog(
+          title: const Text('Sync Strategy'),
+          content: const Text(
+            'You have local data on this device. What would you like to do?\n\n'
+            '• Upload: Send your local data to the server (recommended for first sync)\n'
+            '• Download: Replace local data with server data\n'
+            '• Smart Sync: Automatically sync based on which is newer'
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'upload'),
+              child: const Text('Upload Local'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'download'),
+              child: const Text('Download Server'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'smart'),
+              child: const Text('Smart Sync'),
+            ),
+          ],
+        ),
       );
-    }
 
-    try {
-      await _syncService.saveCredentials(
-        url: _urlController.text.trim(),
-        user: _userController.text.trim(),
-        pass: _passController.text.trim(),
-      );
-      
-      // Trigger a load-sync
-      await widget.repository.loadGames();
-      
-      setState(() => _hasCredentials = true);
-      
+      if (choice == null) return;
+
+      // Show loading
       if (mounted) {
-        Navigator.pop(context); // Close loading
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('WebDAV Credentials Saved and Data Synced')),
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(child: CircularProgressIndicator()),
         );
       }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context); // Close loading
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error during sync: $e'), backgroundColor: Colors.red),
+
+      try {
+        await _syncService.saveCredentials(
+          url: _urlController.text.trim(),
+          user: _userController.text.trim(),
+          pass: _passController.text.trim(),
         );
+
+        if (choice == 'upload') {
+          // Force upload local data to server
+          await widget.repository.triggerManualSyncUp();
+        } else if (choice == 'download') {
+          // Force download from server
+          await widget.repository.loadGames();
+        } else if (choice == 'smart') {
+          // Let the normal sync logic decide
+          await widget.repository.loadGames();
+        }
+        
+        setState(() => _hasCredentials = true);
+        
+        if (mounted) {
+          Navigator.pop(context); // Close loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('WebDAV Connected and Synced')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          Navigator.pop(context); // Close loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error during sync: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    } else {
+      // No local data, just save and sync normally
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Connect to WebDAV?'),
+          content: const Text('This will save the credentials and sync with the server.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Connect')),
+          ],
+        )
+      );
+
+      if (confirm != true) return;
+
+      // Show loading
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(child: CircularProgressIndicator()),
+        );
+      }
+
+      try {
+        await _syncService.saveCredentials(
+          url: _urlController.text.trim(),
+          user: _userController.text.trim(),
+          pass: _passController.text.trim(),
+        );
+        
+        await widget.repository.loadGames();
+        
+        setState(() => _hasCredentials = true);
+        
+        if (mounted) {
+          Navigator.pop(context); // Close loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('WebDAV Connected')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          Navigator.pop(context); // Close loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
       }
     }
   }
@@ -136,9 +220,91 @@ class _SettingsPageState extends State<SettingsPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: _hasCredentials ? _buildActiveSyncCard() : _buildSyncLoginForm(),
           ),
+          if (_hasCredentials) ...[
+            ListTile(
+              leading: const Icon(Icons.cloud_upload_outlined),
+              title: const Text('Force Upload to Server'),
+              subtitle: const Text('Upload current local data to WebDAV'),
+              onTap: () async {
+                // Show loading
+                if (mounted) {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                try {
+                  await widget.repository.triggerManualSyncUp();
+                  if (mounted) {
+                    Navigator.pop(context); // Close loading
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Data uploaded to server successfully')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    Navigator.pop(context); // Close loading
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.red),
+                    );
+                  }
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.cloud_download_outlined),
+              title: const Text('Force Download from Server'),
+              subtitle: const Text('Download and overwrite local data from WebDAV'),
+              onTap: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Download from Server?'),
+                    content: const Text('This will download data from the server and overwrite your local data if the server has a newer version. Any unsaved local changes may be lost.'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Download'),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirm == true) {
+                  // Show loading
+                  if (mounted) {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => const Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  try {
+                    await widget.repository.loadGames();
+                    if (mounted) {
+                      Navigator.pop(context); // Close loading
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Data synced from server successfully')),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      Navigator.pop(context); // Close loading
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Sync failed: $e'), backgroundColor: Colors.red),
+                      );
+                    }
+                  }
+                }
+              },
+            ),
+          ],
           const Divider(),
-          _buildSectionHeader('Data Management (Local)'),
-// ... (rest of the list items)
+          _buildSectionHeader('Display Preferences'),
           SwitchListTile(
             secondary: const Icon(Icons.visibility_off_outlined),
             title: const Text('Show Played (Not Owned) Games'),
@@ -149,20 +315,8 @@ class _SettingsPageState extends State<SettingsPage> {
               setState(() {});
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.file_download_outlined),
-            title: const Text('Force Backup to Server'),
-            subtitle: const Text('Upload current local data to WebDAV'),
-            onTap: () async {
-              if (!_hasCredentials) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Save WebDAV credentials first')));
-                return;
-              }
-              // This will be handled by repository sync trigger manually or via service
-              await widget.repository.triggerManualSyncUp();
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sync triggered')));
-            },
-          ),
+          const Divider(),
+          _buildSectionHeader('Data Management'),
           ListTile(
             leading: const Icon(Icons.refresh_outlined, color: Colors.orange),
             title: const Text('Recalculate XP', style: TextStyle(color: Colors.orange)),
