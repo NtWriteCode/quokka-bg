@@ -59,7 +59,7 @@ class GameRepository extends ChangeNotifier {
       xpHistory: [
         XpLogEntry(date: DateTime.now(), reason: reason, amount: amount),
         ..._userStats.xpHistory,
-      ].take(50).toList(), // Keep last 50 entries
+      ].take(100).toList(), // Keep last 100 entries
     );
     await saveUserStats();
   }

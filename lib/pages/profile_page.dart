@@ -15,6 +15,8 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  bool _showAllXpHistory = false;
+
   @override
   void initState() {
     super.initState();
@@ -444,24 +446,39 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildXpHistory(UserStats stats) {
-// ...
     if (stats.xpHistory.isEmpty) return const Text('No XP earned yet.');
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: stats.xpHistory.length,
-      itemBuilder: (context, index) {
-        final entry = stats.xpHistory[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            leading: const CircleAvatar(child: Icon(Icons.bolt, color: Colors.amber)),
-            title: Text(entry.reason),
-            subtitle: Text('${entry.date.hour}:${entry.date.minute} - ${entry.date.day}/${entry.date.month}'),
-            trailing: Text('+${entry.amount} XP', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+    
+    final displayCount = _showAllXpHistory ? stats.xpHistory.length : min(10, stats.xpHistory.length);
+    final hasMore = stats.xpHistory.length > 10;
+    
+    return Column(
+      children: [
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: displayCount,
+          itemBuilder: (context, index) {
+            final entry = stats.xpHistory[index];
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.bolt, color: Colors.amber)),
+                title: Text(entry.reason),
+                subtitle: Text('${entry.date.hour.toString().padLeft(2, '0')}:${entry.date.minute.toString().padLeft(2, '0')} - ${entry.date.day}/${entry.date.month}/${entry.date.year}'),
+                trailing: Text('+${entry.amount} XP', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+              ),
+            );
+          },
+        ),
+        if (hasMore)
+          TextButton.icon(
+            onPressed: () => setState(() => _showAllXpHistory = !_showAllXpHistory),
+            icon: Icon(_showAllXpHistory ? Icons.expand_less : Icons.expand_more),
+            label: Text(_showAllXpHistory 
+              ? 'Show Less' 
+              : 'Show All (${stats.xpHistory.length} entries)'),
           ),
-        );
-      },
+      ],
     );
   }
 }
