@@ -8,7 +8,7 @@ class AchievementService {
           title: 'New Hobby',
           description: 'Own 5 games',
           tier: AchievementTier.bronze,
-          xpReward: 15,
+          xpReward: 20,
           category: 'The Collector',
         ),
         Achievement(
@@ -16,7 +16,7 @@ class AchievementService {
           title: 'Shelf Filler',
           description: 'Own 25 games',
           tier: AchievementTier.silver,
-          xpReward: 30,
+          xpReward: 40,
           category: 'The Collector',
         ),
         Achievement(
@@ -24,7 +24,7 @@ class AchievementService {
           title: 'Museum Curator',
           description: 'Own 100 games',
           tier: AchievementTier.gold,
-          xpReward: 60,
+          xpReward: 80,
           category: 'The Collector',
         ),
         Achievement(
@@ -32,7 +32,7 @@ class AchievementService {
           title: 'Spring Cleaning',
           description: 'Sell your first game',
           tier: AchievementTier.bronze,
-          xpReward: 15,
+          xpReward: 20,
           category: 'The Collector',
         ),
         Achievement(
@@ -40,7 +40,7 @@ class AchievementService {
           title: 'Merchant',
           description: 'Sell 5 games',
           tier: AchievementTier.silver,
-          xpReward: 30,
+          xpReward: 40,
           category: 'The Collector',
         ),
         Achievement(
@@ -48,7 +48,7 @@ class AchievementService {
           title: 'Librarian',
           description: 'Lend a game to a friend',
           tier: AchievementTier.bronze,
-          xpReward: 15,
+          xpReward: 20,
           category: 'The Collector',
         ),
         Achievement(
@@ -56,7 +56,7 @@ class AchievementService {
           title: 'Public Library',
           description: 'Lend games 10 times',
           tier: AchievementTier.silver,
-          xpReward: 30,
+          xpReward: 40,
           category: 'The Collector',
         ),
 
@@ -66,7 +66,7 @@ class AchievementService {
           title: 'Dice Roller',
           description: 'Log 10 play sessions',
           tier: AchievementTier.bronze,
-          xpReward: 15,
+          xpReward: 20,
           category: 'The Tactician',
         ),
         Achievement(
@@ -74,7 +74,7 @@ class AchievementService {
           title: 'Regular Regular',
           description: 'Log 50 play sessions',
           tier: AchievementTier.silver,
-          xpReward: 30,
+          xpReward: 40,
           category: 'The Tactician',
         ),
         Achievement(
@@ -82,7 +82,7 @@ class AchievementService {
           title: 'Tabletop Legend',
           description: 'Log 100 play sessions',
           tier: AchievementTier.gold,
-          xpReward: 60,
+          xpReward: 80,
           category: 'The Tactician',
         ),
         Achievement(
@@ -90,7 +90,7 @@ class AchievementService {
           title: 'Marathon',
           description: 'Log a session > 120 minutes',
           tier: AchievementTier.silver,
-          xpReward: 30,
+          xpReward: 40,
           category: 'The Tactician',
         ),
         Achievement(
@@ -98,7 +98,7 @@ class AchievementService {
           title: 'Filler Fanatic',
           description: 'Log a session < 15 minutes',
           tier: AchievementTier.bronze,
-          xpReward: 15,
+          xpReward: 20,
           category: 'The Tactician',
         ),
 
@@ -108,7 +108,7 @@ class AchievementService {
           title: 'First Blood',
           description: 'Win a game',
           tier: AchievementTier.bronze,
-          xpReward: 15,
+          xpReward: 20,
           category: 'The Competitor',
         ),
         Achievement(
@@ -116,7 +116,7 @@ class AchievementService {
           title: 'Champion',
           description: 'Win 10 games',
           tier: AchievementTier.silver,
-          xpReward: 30,
+          xpReward: 40,
           category: 'The Competitor',
         ),
         Achievement(
@@ -124,7 +124,7 @@ class AchievementService {
           title: 'Unstoppable',
           description: 'Win 50 games',
           tier: AchievementTier.gold,
-          xpReward: 60,
+          xpReward: 80,
           category: 'The Competitor',
         ),
         Achievement(
@@ -132,7 +132,7 @@ class AchievementService {
           title: 'Social Butterfly',
           description: 'Add 5 unique players',
           tier: AchievementTier.bronze,
-          xpReward: 15,
+          xpReward: 20,
           category: 'The Competitor',
         ),
         Achievement(
@@ -140,7 +140,7 @@ class AchievementService {
           title: 'Variety Show',
           description: 'Play 10 distinct games',
           tier: AchievementTier.silver,
-          xpReward: 30,
+          xpReward: 40,
           category: 'The Competitor',
         ),
 
@@ -150,7 +150,7 @@ class AchievementService {
           title: 'Dreamer',
           description: 'Add a game to your wishlist',
           tier: AchievementTier.bronze,
-          xpReward: 15,
+          xpReward: 20,
           category: 'The Wishful Thinker',
         ),
         Achievement(
@@ -158,7 +158,7 @@ class AchievementService {
           title: 'Deal Hunter',
           description: 'Move a game from Wishlist to Collection',
           tier: AchievementTier.bronze,
-          xpReward: 15,
+          xpReward: 20,
           category: 'The Wishful Thinker',
         ),
         
@@ -168,7 +168,7 @@ class AchievementService {
           title: 'Expansion Starter',
           description: 'Own your first expansion',
           tier: AchievementTier.bronze,
-          xpReward: 15,
+          xpReward: 20,
           category: 'The Expansionist',
         ),
         Achievement(
@@ -176,7 +176,7 @@ class AchievementService {
           title: 'Big Box Collector',
           description: 'Own 10 expansions',
           tier: AchievementTier.silver,
-          xpReward: 30,
+          xpReward: 40,
           category: 'The Expansionist',
         ),
         Achievement(
@@ -184,7 +184,7 @@ class AchievementService {
           title: 'Completionist',
           description: 'Own 30 expansions',
           tier: AchievementTier.gold,
-          xpReward: 60,
+          xpReward: 80,
           category: 'The Expansionist',
         ),
         Achievement(
@@ -192,7 +192,7 @@ class AchievementService {
           title: 'Enhanced Experience',
           description: 'Play a game with at least 1 expansion',
           tier: AchievementTier.bronze,
-          xpReward: 15,
+          xpReward: 20,
           category: 'The Expansionist',
         ),
         Achievement(
@@ -200,7 +200,7 @@ class AchievementService {
           title: 'Content Overload',
           description: 'Play a session with 3 or more expansions',
           tier: AchievementTier.gold,
-          xpReward: 60,
+          xpReward: 80,
           category: 'The Expansionist',
         ),
         Achievement(
@@ -208,7 +208,7 @@ class AchievementService {
           title: 'Flavor Enhancer',
           description: 'Own expansions for 5 different base games',
           tier: AchievementTier.silver,
-          xpReward: 30,
+          xpReward: 40,
           category: 'The Expansionist',
         ),
       ];

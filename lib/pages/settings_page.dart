@@ -164,6 +164,56 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.refresh_outlined, color: Colors.orange),
+            title: const Text('Recalculate XP', style: TextStyle(color: Colors.orange)),
+            subtitle: const Text('Recalculate your level and XP based on current data'),
+            onTap: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Recalculate XP?'),
+                  content: const Text('This will recalculate your total XP and level based on your current games, plays, and achievements. Your XP history will be cleared, but no data will be lost.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: TextButton.styleFrom(foregroundColor: Colors.orange),
+                      child: const Text('Recalculate'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirm == true) {
+                // Show loading
+                if (mounted) {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                try {
+                  await widget.repository.recalculateXp();
+                  if (mounted) {
+                    Navigator.pop(context); // Close loading
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('XP Recalculated Successfully')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    Navigator.pop(context); // Close loading
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error recalculating XP: $e'), backgroundColor: Colors.red),
+                    );
+                  }
+                }
+              }
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.delete_forever_outlined, color: Colors.red),
             title: const Text('Reset Profile', style: TextStyle(color: Colors.red)),
             subtitle: const Text('Clear all local data and sync this reset to the server'),

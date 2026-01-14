@@ -88,7 +88,7 @@ class GameRepository extends ChangeNotifier {
         
         // Expansionist achievements
         case 'expansion_1': 
-          shouldUnlock = _ownedGames.where((g) => g.isExpansion && g.status == GameStatus.owned).length >= 1; break;
+          shouldUnlock = _ownedGames.where((g) => g.isExpansion && g.status == GameStatus.owned).isNotEmpty; break;
         case 'expansion_10': 
           shouldUnlock = _ownedGames.where((g) => g.isExpansion && g.status == GameStatus.owned).length >= 10; break;
         case 'expansion_30': 
@@ -125,6 +125,91 @@ class GameRepository extends ChangeNotifier {
       _unlockedController.add(newUnlocks);
       await saveUserStats();
     }
+  }
+
+  Future<void> recalculateXp() async {
+    int totalXp = 0;
+    
+    // 1. Calculate XP from games
+    for (final game in _ownedGames) {
+      switch (game.status) {
+        case GameStatus.owned:
+          totalXp += 10;
+          break;
+        case GameStatus.wishlist:
+          totalXp += 1;
+          break;
+        case GameStatus.lended:
+          totalXp += 10 + 5; // owned once + lent once
+          break;
+        case GameStatus.sold:
+          totalXp += 10 + 3; // owned once + sold once
+          break;
+        case GameStatus.unowned:
+          // No XP
+          break;
+      }
+    }
+    
+    // 2. Add XP from wishlist conversions (use existing counter)
+    totalXp += _userStats.wishlistConversions * 5;
+    
+    // 3. Calculate XP from plays
+    for (final play in _playRecords) {
+      totalXp += 3 * play.playerScores.length;
+    }
+    
+    // 4. Calculate XP from achievements
+    final allAchievements = AchievementService.allAchievements;
+    for (final achievementId in _userStats.unlockedAchievementIds) {
+      final achievement = allAchievements.firstWhere(
+        (a) => a.id == achievementId,
+        orElse: () => Achievement(
+          id: achievementId,
+          title: '',
+          description: '',
+          tier: AchievementTier.bronze,
+          xpReward: 0,
+          category: '',
+        ),
+      );
+      totalXp += achievement.xpReward;
+    }
+    
+    // 5. Calculate level from total XP
+    int level = 1;
+    int remaining = totalXp;
+    while (remaining >= (99 + level + 1)) {
+      remaining -= (99 + level + 1);
+      level++;
+    }
+    
+    // 6. Recalculate counters from source data
+    final soldCount = _ownedGames.where((g) => g.status == GameStatus.sold).length;
+    final lendedCount = _ownedGames.where((g) => g.status == GameStatus.lended).length;
+    final totalPlays = _playRecords.length;
+    final totalWins = _playRecords.where((p) => p.winnerId != null).length;
+    
+    // 7. Update user stats
+    _userStats = _userStats.copyWith(
+      totalXp: remaining,
+      level: level,
+      xpHistory: [
+        XpLogEntry(
+          date: DateTime.now(),
+          reason: 'XP Recalculated',
+          amount: totalXp,
+        ),
+      ],
+      soldCount: soldCount,
+      lendedCount: lendedCount,
+      totalPlays: totalPlays,
+      totalWins: totalWins,
+      // Keep wishlistConversions as is (can't recalculate)
+    );
+    
+    await saveUserStats();
+    notifyListeners();
   }
 
   Future<void> setShowUnownedGames(bool show) async {
@@ -356,9 +441,9 @@ class GameRepository extends ChangeNotifier {
     _ownedGames.add(game);
     await saveGames();
     if (game.isWishlist) {
-      await addXp(2, 'Added to Wishlist: ${game.name}');
+      await addXp(1, 'Added to Wishlist: ${game.name}');
     } else {
-      await addXp(50, 'New Collection Entry: ${game.name}');
+      await addXp(10, 'New Collection Entry: ${game.name}');
     }
     await checkAchievements();
   }
@@ -389,7 +474,7 @@ class GameRepository extends ChangeNotifier {
     _playRecords.add(record);
     await savePlays();
     int playerCount = record.playerScores.length;
-    await addXp(2 * playerCount, 'Played ${record.gameName} with $playerCount people');
+    await addXp(3 * playerCount, 'Played ${record.gameName} with $playerCount people');
     
     _userStats = _userStats.copyWith(
       totalPlays: _userStats.totalPlays + 1,
@@ -486,13 +571,13 @@ class GameRepository extends ChangeNotifier {
 
     if (oldGame.isWishlist && newStatus != GameStatus.wishlist) {
       _userStats = _userStats.copyWith(wishlistConversions: _userStats.wishlistConversions + 1);
-      await addXp(15, 'Got it! Wishlist -> Collection: ${oldGame.name}');
+      await addXp(5, 'Got it! Wishlist -> Collection: ${oldGame.name}');
     } else if (newStatus == GameStatus.sold) {
       _userStats = _userStats.copyWith(soldCount: _userStats.soldCount + 1);
-      await addXp(10, 'Sold: ${oldGame.name}');
+      await addXp(3, 'Sold: ${oldGame.name}');
     } else if (newStatus == GameStatus.lended) {
       _userStats = _userStats.copyWith(lendedCount: _userStats.lendedCount + 1);
-      await addXp(10, 'Lent: ${oldGame.name}');
+      await addXp(5, 'Lent: ${oldGame.name}');
     }
     await checkAchievements();
   }
