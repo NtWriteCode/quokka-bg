@@ -43,7 +43,7 @@ class Achievement {
 class XpLogEntry {
   final DateTime date;
   final String reason;
-  final int amount;
+  final double amount;
 
   XpLogEntry({required this.date, required this.reason, required this.amount});
 
@@ -56,12 +56,12 @@ class XpLogEntry {
   factory XpLogEntry.fromJson(Map<String, dynamic> json) => XpLogEntry(
         date: DateTime.parse(json['date']),
         reason: json['reason'],
-        amount: json['amount'],
+        amount: (json['amount'] is int) ? (json['amount'] as int).toDouble() : (json['amount'] ?? 0.0),
       );
 }
 
 class UserStats {
-  final int totalXp;
+  final double totalXp; // Changed to double for fractional XP
   final int level;
   final List<XpLogEntry> xpHistory;
   final List<String> unlockedAchievementIds;
@@ -73,12 +73,18 @@ class UserStats {
   final int totalPlays;
   final int totalWins;
   
+  // Daily login and streak tracking
+  final DateTime? lastLoginDate;
+  final DateTime? lastPlayDate; // Last date a game was played
+  final int consecutiveDays; // Consecutive days playing games (for streak bonus)
+  final double streakBonus; // Current streak bonus percentage (0.0 to 1.0 = 0% to 100%)
+  
   // Customization
   final String? customTitle; // null means use level-based title
   final int? customBackgroundTier; // null means use level-based background
 
   UserStats({
-    this.totalXp = 0,
+    this.totalXp = 0.0,
     this.level = 1,
     this.xpHistory = const [],
     this.unlockedAchievementIds = const [],
@@ -87,14 +93,40 @@ class UserStats {
     this.wishlistConversions = 0,
     this.totalPlays = 0,
     this.totalWins = 0,
+    this.lastLoginDate,
+    this.lastPlayDate,
+    this.consecutiveDays = 0,
+    this.streakBonus = 0.0,
     this.customTitle,
     this.customBackgroundTier,
   });
 
-  int get xpForNextLevel => 99 + (level + 1);
+  /// Calculate XP required to reach a specific level from the previous level
+  /// For example: getXpRequiredForLevel(2) returns XP needed to go from level 1 to level 2
+  static int getXpRequiredForLevel(int targetLevel) {
+    return 90 + (targetLevel ~/ 10) * 5;
+  }
+  
+  /// Calculate level and remaining XP from a total accumulated XP amount
+  /// Returns a map with 'level' (int) and 'remainingXp' (double) keys
+  static Map<String, num> calculateLevelFromTotalXp(double totalAccumulatedXp) {
+    int level = 1;
+    double remaining = totalAccumulatedXp;
+    
+    while (true) {
+      int xpNeeded = getXpRequiredForLevel(level + 1);
+      if (remaining < xpNeeded) break;
+      remaining -= xpNeeded;
+      level++;
+    }
+    
+    return {'level': level, 'remainingXp': remaining};
+  }
+  
+  int get xpForNextLevel => getXpRequiredForLevel(level + 1);
   
   UserStats copyWith({
-    int? totalXp,
+    double? totalXp,
     int? level,
     List<XpLogEntry>? xpHistory,
     List<String>? unlockedAchievementIds,
@@ -103,6 +135,10 @@ class UserStats {
     int? wishlistConversions,
     int? totalPlays,
     int? totalWins,
+    Object? lastLoginDate = _notProvided,
+    Object? lastPlayDate = _notProvided,
+    int? consecutiveDays,
+    double? streakBonus,
     Object? customTitle = _notProvided,
     Object? customBackgroundTier = _notProvided,
   }) {
@@ -116,6 +152,10 @@ class UserStats {
       wishlistConversions: wishlistConversions ?? this.wishlistConversions,
       totalPlays: totalPlays ?? this.totalPlays,
       totalWins: totalWins ?? this.totalWins,
+      lastLoginDate: lastLoginDate == _notProvided ? this.lastLoginDate : lastLoginDate as DateTime?,
+      lastPlayDate: lastPlayDate == _notProvided ? this.lastPlayDate : lastPlayDate as DateTime?,
+      consecutiveDays: consecutiveDays ?? this.consecutiveDays,
+      streakBonus: streakBonus ?? this.streakBonus,
       customTitle: customTitle == _notProvided ? this.customTitle : customTitle as String?,
       customBackgroundTier: customBackgroundTier == _notProvided ? this.customBackgroundTier : customBackgroundTier as int?,
     );
@@ -133,18 +173,26 @@ class UserStats {
         'wishlistConversions': wishlistConversions,
         'totalPlays': totalPlays,
         'totalWins': totalWins,
+        'lastLoginDate': lastLoginDate?.toIso8601String(),
+        'lastPlayDate': lastPlayDate?.toIso8601String(),
+        'consecutiveDays': consecutiveDays,
+        'streakBonus': streakBonus,
         'customTitle': customTitle,
         'customBackgroundTier': customBackgroundTier,
       };
 
   factory UserStats.fromJson(Map<String, dynamic> json) => UserStats(
-        totalXp: json['totalXp'] ?? 0,
+        totalXp: (json['totalXp'] is int) ? (json['totalXp'] as int).toDouble() : (json['totalXp'] ?? 0.0),
         level: json['level'] ?? 1,
         xpHistory: (json['xpHistory'] as List?)?.map((e) => XpLogEntry.fromJson(e)).toList() ?? [],
         unlockedAchievementIds: List<String>.from(json['unlockedAchievementIds'] ?? []),
         soldCount: json['soldCount'] ?? 0,
         lendedCount: json['lendedCount'] ?? 0,
         wishlistConversions: json['wishlistConversions'] ?? 0,
+        lastLoginDate: json['lastLoginDate'] != null ? DateTime.parse(json['lastLoginDate']) : null,
+        lastPlayDate: json['lastPlayDate'] != null ? DateTime.parse(json['lastPlayDate']) : null,
+        consecutiveDays: json['consecutiveDays'] ?? 0,
+        streakBonus: (json['streakBonus'] is int) ? (json['streakBonus'] as int).toDouble() : (json['streakBonus'] ?? 0.0),
         totalPlays: json['totalPlays'] ?? 0,
         totalWins: json['totalWins'] ?? 0,
         customTitle: json['customTitle'],

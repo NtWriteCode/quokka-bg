@@ -10,6 +10,7 @@ import 'package:quokka/models/player.dart';
 import 'package:quokka/models/user_stats.dart';
 import 'package:quokka/services/sync_service.dart';
 import 'package:quokka/services/achievement_service.dart';
+import 'package:quokka/helpers/title_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class GameRepository extends ChangeNotifier {
@@ -44,13 +45,19 @@ class GameRepository extends ChangeNotifier {
 
   UserStats get userStats => _userStats;
   
-  Future<void> addXp(int amount, String reason) async {
-    int newXp = _userStats.totalXp + amount;
+  Future<void> addXp(double amount, String reason, {bool applyStreakBonus = false}) async {
+    // Apply streak bonus if requested
+    double finalAmount = amount;
+    if (applyStreakBonus) {
+      finalAmount = amount * (1.0 + _userStats.streakBonus);
+    }
+    
+    double newXp = _userStats.totalXp + finalAmount;
     int oldLevel = _userStats.level;
     int newLevel = oldLevel;
     
-    while (newXp >= (99 + (newLevel + 1))) {
-      newXp -= (99 + (newLevel + 1));
+    while (newXp >= UserStats.getXpRequiredForLevel(newLevel + 1)) {
+      newXp -= UserStats.getXpRequiredForLevel(newLevel + 1);
       newLevel++;
     }
     
@@ -70,11 +77,108 @@ class GameRepository extends ChangeNotifier {
     }
   }
 
+  // Stream controller for level-up events
+  final StreamController<Map<String, dynamic>> _levelUpController = StreamController.broadcast();
+  Stream<Map<String, dynamic>> get onLevelUp => _levelUpController.stream;
+
   void _notifyLevelUp(int oldLevel, int newLevel) {
-    // This can be listened to by the UI to show a level-up dialog/snackbar
-    // For now, just print for debugging
-    print('DEBUG: Level up! $oldLevel → $newLevel');
-    // TODO: Implement level-up notification system if needed
+    // Broadcast level-up event with details
+    _levelUpController.add({
+      'oldLevel': oldLevel,
+      'newLevel': newLevel,
+      'newTitle': _getTitleForLevel(newLevel),
+      'newBackgroundTier': (newLevel / 5).floor(),
+      'xpForNext': UserStats.getXpRequiredForLevel(newLevel + 1),
+    });
+  }
+  
+  String _getTitleForLevel(int level) {
+    return TitleHelper.getTitleForLevel(level);
+  }
+  
+  /// Check and award daily login bonus
+  Future<void> checkDailyLoginBonus() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    if (_userStats.lastLoginDate == null) {
+      // First login ever
+      await addXp(1.0, 'Daily Login Bonus');
+      _userStats = _userStats.copyWith(lastLoginDate: now);
+      await saveUserStats();
+      return;
+    }
+    
+    final lastLogin = DateTime(
+      _userStats.lastLoginDate!.year,
+      _userStats.lastLoginDate!.month,
+      _userStats.lastLoginDate!.day,
+    );
+    
+    if (today.isAfter(lastLogin)) {
+      // It's a new day, award bonus
+      await addXp(1.0, 'Daily Login Bonus');
+      _userStats = _userStats.copyWith(lastLoginDate: now);
+      await saveUserStats();
+    }
+  }
+  
+  /// Update streak bonus based on play activity
+  /// Call this when a game is played
+  Future<void> updateStreakBonus() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    if (_userStats.lastPlayDate == null) {
+      // First play ever
+      _userStats = _userStats.copyWith(
+        lastPlayDate: now,
+        consecutiveDays: 1,
+        streakBonus: 0.1, // 10% bonus after first day
+      );
+      await saveUserStats();
+      return;
+    }
+    
+    final lastPlay = DateTime(
+      _userStats.lastPlayDate!.year,
+      _userStats.lastPlayDate!.month,
+      _userStats.lastPlayDate!.day,
+    );
+    
+    final daysDifference = today.difference(lastPlay).inDays;
+    
+    if (daysDifference == 0) {
+      // Same day, no change
+      return;
+    } else if (daysDifference == 1) {
+      // Consecutive day! Increase streak
+      final newConsecutiveDays = _userStats.consecutiveDays + 1;
+      final newStreakBonus = (newConsecutiveDays * 0.1).clamp(0.0, 1.0); // Max 100%
+      
+      _userStats = _userStats.copyWith(
+        lastPlayDate: now,
+        consecutiveDays: newConsecutiveDays,
+        streakBonus: newStreakBonus,
+      );
+      await saveUserStats();
+    } else {
+      // Missed days! Decrease streak by 40% per day missed
+      double newStreakBonus = _userStats.streakBonus;
+      for (int i = 1; i < daysDifference; i++) {
+        newStreakBonus = (newStreakBonus - 0.4).clamp(0.0, 1.0);
+      }
+      
+      // Calculate new consecutive days based on bonus
+      final newConsecutiveDays = (newStreakBonus / 0.1).round();
+      
+      _userStats = _userStats.copyWith(
+        lastPlayDate: now,
+        consecutiveDays: newConsecutiveDays,
+        streakBonus: newStreakBonus,
+      );
+      await saveUserStats();
+    }
   }
 
   Future<void> checkAchievements() async {
@@ -133,7 +237,7 @@ class GameRepository extends ChangeNotifier {
         ],
       );
       for (final ach in newUnlocks) {
-        await addXp(ach.xpReward, 'Achievement: ${ach.title}');
+        await addXp(ach.xpReward.toDouble(), 'Achievement: ${ach.title}');
       }
       _unlockedController.add(newUnlocks);
       await saveUserStats();
@@ -143,22 +247,22 @@ class GameRepository extends ChangeNotifier {
   Future<void> recalculateXp() async {
     await _preSaveSync();
     
-    int totalXp = 0;
+    double totalXp = 0.0;
     
-    // 1. Calculate XP from games
+    // 1. Calculate XP from games (base XP without streak bonus)
     for (final game in _ownedGames) {
       switch (game.status) {
         case GameStatus.owned:
-          totalXp += 10;
+          totalXp += 10.0;
           break;
         case GameStatus.wishlist:
-          totalXp += 1;
+          totalXp += 1.0;
           break;
         case GameStatus.lended:
-          totalXp += 10 + 5; // owned once + lent once
+          totalXp += 10.0 + 5.0; // owned once + lent once
           break;
         case GameStatus.sold:
-          totalXp += 10 + 3; // owned once + sold once
+          totalXp += 10.0 + 3.0; // owned once + sold once
           break;
         case GameStatus.unowned:
           // No XP
@@ -167,11 +271,12 @@ class GameRepository extends ChangeNotifier {
     }
     
     // 2. Add XP from wishlist conversions (use existing counter)
-    totalXp += _userStats.wishlistConversions * 5;
+    totalXp += _userStats.wishlistConversions * 5.0;
     
-    // 3. Calculate XP from plays
+    // 3. Calculate XP from plays (base XP - we can't retroactively apply streak bonuses)
+    // Note: During recalculation, we ignore streak bonuses since we don't have historical streak data
     for (final play in _playRecords) {
-      totalXp += 3 * play.playerScores.length;
+      totalXp += 3.0 * play.playerScores.length;
     }
     
     // 4. Calculate XP from achievements
@@ -188,16 +293,13 @@ class GameRepository extends ChangeNotifier {
           category: '',
         ),
       );
-      totalXp += achievement.xpReward;
+      totalXp += achievement.xpReward.toDouble();
     }
     
-    // 5. Calculate level from total XP
-    int level = 1;
-    int remaining = totalXp;
-    while (remaining >= (99 + level + 1)) {
-      remaining -= (99 + level + 1);
-      level++;
-    }
+    // 5. Calculate level from total XP using centralized calculation
+    final levelData = UserStats.calculateLevelFromTotalXp(totalXp);
+    final level = levelData['level']! as int;
+    final remaining = levelData['remainingXp']! as double;
     
     // 6. Recalculate counters from source data
     final soldCount = _ownedGames.where((g) => g.status == GameStatus.sold).length;
@@ -225,6 +327,9 @@ class GameRepository extends ChangeNotifier {
     
     await saveUserStats();
     notifyListeners();
+    
+    // Trigger level-up notification
+    _notifyLevelUp(1, level);
   }
 
   Future<void> setShowUnownedGames(bool show) async {
@@ -461,9 +566,9 @@ class GameRepository extends ChangeNotifier {
     _ownedGames.add(game);
     await saveGames();
     if (game.isWishlist) {
-      await addXp(1, 'Added to Wishlist: ${game.name}');
+      await addXp(1.0, 'Added to Wishlist: ${game.name}');
     } else {
-      await addXp(10, 'New Collection Entry: ${game.name}');
+      await addXp(10.0, 'New Collection Entry: ${game.name}');
     }
     await checkAchievements();
   }
@@ -493,8 +598,12 @@ class GameRepository extends ChangeNotifier {
     await _preSaveSync();
     _playRecords.add(record);
     await savePlays();
+    
+    // Update streak bonus before awarding XP
+    await updateStreakBonus();
+    
     int playerCount = record.playerScores.length;
-    await addXp(3 * playerCount, 'Played ${record.gameName} with $playerCount people');
+    await addXp(3.0 * playerCount, 'Played ${record.gameName} with $playerCount people', applyStreakBonus: true);
     
     _userStats = _userStats.copyWith(
       totalPlays: _userStats.totalPlays + 1,
@@ -591,13 +700,13 @@ class GameRepository extends ChangeNotifier {
 
     if (oldGame.isWishlist && newStatus != GameStatus.wishlist) {
       _userStats = _userStats.copyWith(wishlistConversions: _userStats.wishlistConversions + 1);
-      await addXp(5, 'Got it! Wishlist -> Collection: ${oldGame.name}');
+      await addXp(5.0, 'Got it! Wishlist -> Collection: ${oldGame.name}');
     } else if (newStatus == GameStatus.sold) {
       _userStats = _userStats.copyWith(soldCount: _userStats.soldCount + 1);
-      await addXp(3, 'Sold: ${oldGame.name}');
+      await addXp(3.0, 'Sold: ${oldGame.name}');
     } else if (newStatus == GameStatus.lended) {
       _userStats = _userStats.copyWith(lendedCount: _userStats.lendedCount + 1);
-      await addXp(5, 'Lent: ${oldGame.name}');
+      await addXp(5.0, 'Lent: ${oldGame.name}');
     }
     await checkAchievements();
   }

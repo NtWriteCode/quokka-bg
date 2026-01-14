@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'pages/games_list_page.dart';
 import 'pages/played_games_page.dart';
 import 'pages/stats_page.dart';
-import 'pages/settings_page.dart';
 import 'pages/profile_page.dart';
 import 'pages/library_page.dart';
 import 'widgets/achievement_dialog.dart';
+import 'widgets/level_up_dialog.dart';
 import 'repositories/game_repository.dart';
 import 'widgets/main_scaffold.dart';
 
@@ -43,7 +42,11 @@ class _RootPageState extends State<RootPage> {
   @override
   void initState() {
     super.initState();
-    _repository.loadGames();
+    _repository.loadGames().then((_) {
+      // Check daily login bonus after loading
+      _repository.checkDailyLoginBonus();
+    });
+    
     _repository.onAchievementsUnlocked.listen((achievements) {
       if (mounted) {
         // Delay slightly to avoid popping up while a page transition is happening,
@@ -60,7 +63,32 @@ class _RootPageState extends State<RootPage> {
         });
       }
     });
+    
+    // Listen for level-up events
+    _repository.onLevelUp.listen((levelUpData) {
+      if (mounted) {
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (mounted) {
+            _showLevelUpDialog(levelUpData);
+          }
+        });
+      }
+    });
   }
+  
+  void _showLevelUpDialog(Map<String, dynamic> data) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => LevelUpDialog(
+        newLevel: data['newLevel'],
+        newTitle: data['newTitle'],
+        newBackgroundTier: data['newBackgroundTier'],
+        xpForNext: data['xpForNext'],
+      ),
+    );
+  }
+  @override
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       LibraryPage(repository: _repository),

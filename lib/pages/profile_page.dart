@@ -343,17 +343,107 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '${stats.totalXp} / ${stats.xpForNextLevel} XP',
+                  '${stats.totalXp.round()} / ${stats.xpForNextLevel} XP',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                     shadows: [Shadow(blurRadius: 2, color: Colors.black45)],
                   ),
                 ),
+                const SizedBox(height: 16),
+                // Streak bonus bar
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.local_fire_department, color: Colors.orange, size: 18),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Streak Bonus: ${stats.consecutiveDays} days • +${(stats.streakBonus * 100).round()}%',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            shadows: [Shadow(blurRadius: 2, color: Colors.black45)],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    _buildStreakBar(stats.streakBonus),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildStreakLabel('10%', 1),
+                        _buildStreakLabel('30%', 3),
+                        _buildStreakLabel('60%', 6),
+                        _buildStreakLabel('100%', 10),
+                      ],
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildStreakBar(double streakBonus) {
+    // Max streak is 100% (1.0), divide into 10 segments (each 10%)
+    return Container(
+      height: 20,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Row(
+          children: List.generate(10, (index) {
+            final segmentThreshold = (index + 1) * 0.1;
+            final isActive = streakBonus >= segmentThreshold;
+            final isPartial = streakBonus > index * 0.1 && streakBonus < segmentThreshold;
+            
+            return Expanded(
+              child: Container(
+                margin: EdgeInsets.only(left: index > 0 ? 2 : 0),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isActive
+                        ? [Colors.orange.shade400, Colors.deepOrange.shade600]
+                        : isPartial
+                            ? [Colors.orange.shade300, Colors.orange.shade100]
+                            : [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.1)],
+                  ),
+                ),
+                child: isActive
+                    ? const Center(
+                        child: Icon(
+                          Icons.local_fire_department,
+                          size: 12,
+                          color: Colors.white,
+                        ),
+                      )
+                    : null,
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStreakLabel(String label, int daysRequired) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 10,
+        color: Colors.white70,
+        shadows: [Shadow(blurRadius: 2, color: Colors.black45)],
       ),
     );
   }
@@ -528,7 +618,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 leading: const CircleAvatar(child: Icon(Icons.bolt, color: Colors.amber)),
                 title: Text(entry.reason),
                 subtitle: Text('${entry.date.hour.toString().padLeft(2, '0')}:${entry.date.minute.toString().padLeft(2, '0')} - ${entry.date.day}/${entry.date.month}/${entry.date.year}'),
-                trailing: Text('+${entry.amount} XP', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                trailing: Text('+${entry.amount.round()} XP', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
               ),
             );
           },
