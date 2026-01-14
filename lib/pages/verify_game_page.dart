@@ -142,6 +142,7 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
       isNew: _isNew,
       purchaseDate: _purchaseDate,
       comment: _commentController.text,
+      status: _gameDetails!.status, // Preserve the current status
       isExpansion: _isExpansion,
       parentGameId: _parentGameId,
     );
