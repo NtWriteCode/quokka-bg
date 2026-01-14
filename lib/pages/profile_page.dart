@@ -291,40 +291,71 @@ class _ProfilePageState extends State<ProfilePage> {
           gradient: gradient,
           tier: tier,
           borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const SizedBox(width: 40), // Balance for icon
-                    Expanded(
-                      child: Column(
-                        children: [
-                          CircleAvatar(
-                            radius: 40,
-                            backgroundColor: Colors.white.withOpacity(0.3),
-                            child: Text('${stats.level}', 
-                                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              shadows: [Shadow(blurRadius: 2, color: Colors.black45)],
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
+          child: Stack(
+            children: [
+              // Info icon in top-left corner
+              Positioned(
+                top: 12,
+                left: 12,
+                child: GestureDetector(
+                  onTap: _showXpInfoDialog,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
                     ),
-                    const Icon(Icons.edit, color: Colors.white70, size: 20),
-                  ],
+                    child: const Icon(
+                      Icons.info_outline,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
+              ),
+              // Edit icon in top-right corner
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.edit,
+                    size: 18,
+                    color: Colors.white70,
+                  ),
+                ),
+              ),
+              // Main content
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  children: [
+                    Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 40,
+                          backgroundColor: Colors.white.withOpacity(0.3),
+                          child: Text('${stats.level}', 
+                              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            shadows: [Shadow(blurRadius: 2, color: Colors.black45)],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                 const SizedBox(height: 16),
                 Container(
                   decoration: BoxDecoration(
@@ -341,15 +372,15 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  '${stats.totalXp.round()} / ${stats.xpForNextLevel} XP',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    shadows: [Shadow(blurRadius: 2, color: Colors.black45)],
-                  ),
-                ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${stats.totalXp.round()} / ${stats.xpForNextLevel} XP',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [Shadow(blurRadius: 2, color: Colors.black45)],
+                      ),
+                    ),
                 const SizedBox(height: 16),
                 // Streak bonus bar
                 Column(
@@ -384,8 +415,10 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ],
                 ),
-              ],
-            ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -632,6 +665,108 @@ class _ProfilePageState extends State<ProfilePage> {
               : 'Show All (${stats.xpHistory.length} entries)'),
           ),
       ],
+    );
+  }
+
+  void _showXpInfoDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.bolt, color: Colors.amber),
+            const SizedBox(width: 8),
+            const Text('XP Rewards'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Earn XP by:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              _buildXpInfoItem(Icons.add_circle, 'Add game to collection', '10 XP'),
+              _buildXpInfoItem(Icons.favorite_border, 'Add to wishlist', '1 XP'),
+              _buildXpInfoItem(Icons.shopping_cart, 'Wishlist → Collection', '5 XP'),
+              _buildXpInfoItem(Icons.sell, 'Sell a game', '3 XP'),
+              _buildXpInfoItem(Icons.handshake, 'Lend a game', '5 XP'),
+              _buildXpInfoItem(Icons.casino, 'Play a game', '3 XP × players'),
+              _buildXpInfoItem(Icons.login, 'Daily login', '1 XP'),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              const Text(
+                'Achievements:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              _buildXpInfoItem(Icons.emoji_events, 'Bronze achievement', '10 XP', color: Colors.brown),
+              _buildXpInfoItem(Icons.emoji_events, 'Silver achievement', '25 XP', color: Colors.grey),
+              _buildXpInfoItem(Icons.emoji_events, 'Gold achievement', '50 XP', color: Colors.amber),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.local_fire_department, color: Colors.orange),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Streak Bonus: Play games daily to earn up to +100% XP!',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange.shade900,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it!'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildXpInfoItem(IconData icon, String action, String xp, {Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color ?? Colors.blue),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(action, style: const TextStyle(fontSize: 14)),
+          ),
+          Text(
+            xp,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.green,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
