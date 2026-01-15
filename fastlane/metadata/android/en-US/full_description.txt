@@ -3,11 +3,11 @@ Quokka is your modern board game companion, designed to help you manage your col
 Whether you're a casual player or a hardcore board game enthusiast, Quokka provides everything you need to keep your gaming life organized.
 
 ### 🎲 Features:
-- **Game Library:** Keep a detailed record of every board game in your collection.
-- **Play Tracking:** Easily log your gaming sessions, including players, scores, and durations.
-- **Detailed Statistics:** Visualize your gaming habits with beautiful charts and deep insights.
-- **Player Management:** Track your regular gaming group and their win rates.
-- **Cloud Sync:** Securely sync your data via WebDAV to keep your library consistent across devices.
-- **Clean Interface:** A beautiful, responsive UI built with Material 3.
+- Game Library: Keep a detailed record of every board game in your collection.
+- Play Tracking: Easily log your gaming sessions, including players, scores, and durations.
+- Detailed Statistics: Visualize your gaming habits with beautiful charts and deep insights.
+- Player Management: Track your regular gaming group and their win rates.
+- Cloud Sync: Securely sync your data via WebDAV to keep your library consistent across devices.
+- Clean Interface: A beautiful, responsive UI built with Material 3.
 
 Never forget a victory or a game night again. Start tracking your board game journey with Quokka today!

@@ -993,7 +993,7 @@ class GameRepository extends ChangeNotifier {
       lastUpdated: DateTime.now(),
       stats: LeaderboardStats(
         level: _userStats.level,
-        totalXp: _userStats.totalXp,
+        totalXp: _userStats.totalAccumulatedXp, // Use total accumulated XP
         totalPlays: _userStats.totalPlays,
         uniqueGamesPlayed: uniqueGames,
         gamesOwned: _ownedGames.where((g) => g.status == GameStatus.owned).length,

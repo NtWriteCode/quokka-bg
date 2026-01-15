@@ -8,10 +8,10 @@ import 'package:quokka/widgets/gradient_background.dart';
 enum LeaderboardCategory {
   level('Level', '🏆'),
   totalPlays('Total Plays', '🎲'),
-  currentStreak('Current Streak', '🔥'),
+  currentStreak('Current Play Streak', '🔥'),
   gamesOwned('Games Owned', '📚'),
   achievements('Achievements', '🎯'),
-  longestStreak('Longest Streak', '🌟');
+  longestStreak('Longest Play Streak', '🌟');
 
   final String label;
   final String emoji;
@@ -209,23 +209,35 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
 
     return Column(
       children: [
-        // Category selector
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: SegmentedButton<LeaderboardCategory>(
-            segments: LeaderboardCategory.values.map((category) {
-              return ButtonSegment(
-                value: category,
-                label: Text('${category.emoji} ${category.label}'),
+        // Category selector - Horizontal scrollable chips
+        SizedBox(
+          height: 60,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            children: LeaderboardCategory.values.map((category) {
+              final isSelected = _selectedCategory == category;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: ChoiceChip(
+                  label: Text('${category.emoji} ${category.label}'),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() {
+                        _selectedCategory = category;
+                      });
+                    }
+                  },
+                  selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                  labelStyle: TextStyle(
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.onPrimaryContainer
+                        : null,
+                  ),
+                ),
               );
             }).toList(),
-            selected: {_selectedCategory},
-            onSelectionChanged: (Set<LeaderboardCategory> selected) {
-              setState(() {
-                _selectedCategory = selected.first;
-              });
-            },
-            showSelectedIcon: false,
           ),
         ),
         
@@ -285,141 +297,401 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
-      child: GradientBackground(
-        gradient: gradient,
-        tier: tier,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: isCurrentUser
-                ? Border.all(color: Colors.amber, width: 3)
-                : null,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                // Rank
-                SizedBox(
-                  width: 40,
-                  child: Text(
-                    rankDisplay,
-                    style: TextStyle(
-                      fontSize: rank <= 3 ? 28 : 20,
-                      fontWeight: FontWeight.bold,
-                      color: rankColor ?? Colors.white,
+      child: GestureDetector(
+        onTap: () => _showUserDetailsDialog(context, entry, rank, isCurrentUser, topCategories),
+        child: GradientBackground(
+          gradient: gradient,
+          tier: tier,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: isCurrentUser
+                  ? Border.all(color: Colors.amber, width: 3)
+                  : null,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  // Rank
+                  SizedBox(
+                    width: 40,
+                    child: Text(
+                      rankDisplay,
+                      style: TextStyle(
+                        fontSize: rank <= 3 ? 28 : 20,
+                        fontWeight: FontWeight.bold,
+                        color: rankColor ?? Colors.white,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
                   ),
-                ),
-                const SizedBox(width: 12),
-                
-                // Player info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              entry.displayName,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (isCurrentUser) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.amber,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Text(
-                                'YOU',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.white.withOpacity(0.9),
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                      if (topCategories.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Wrap(
-                          spacing: 4,
-                          children: topCategories.map((emoji) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
+                  const SizedBox(width: 12),
+                  
+                  // Player info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
                               child: Text(
-                                '#1 $emoji',
+                                entry.displayName,
                                 style: const TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            );
-                          }).toList(),
+                            ),
+                            if (isCurrentUser) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  'YOU',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white.withOpacity(0.9),
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        if (topCategories.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Wrap(
+                            spacing: 4,
+                            children: topCategories.map((emoji) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '#1 $emoji',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
                       ],
+                    ),
+                  ),
+                  
+                  // Stat value
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        statValue.toString(),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        'Level ${entry.stats.level}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
                     ],
                   ),
-                ),
-                
-                // Stat value
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      statValue.toString(),
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'Level ${entry.stats.level}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.8),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  void _showUserDetailsDialog(
+    BuildContext context,
+    LeaderboardEntry entry,
+    int rank,
+    bool isCurrentUser,
+    Set<String> topCategories,
+  ) {
+    final tier = entry.customBackgroundTier ?? (entry.stats.level / 5).floor();
+    final gradient = TitleHelper.getBackgroundForLevel(tier * 5);
+    final title = entry.customTitle ?? TitleHelper.getTitleForLevel(entry.stats.level);
+    final backgroundTierName = TitleHelper.getTierNameForLevel(tier * 5);
+
+    // Rank display
+    String rankDisplay = '#$rank';
+    if (rank == 1) rankDisplay = '🥇 #1';
+    else if (rank == 2) rankDisplay = '🥈 #2';
+    else if (rank == 3) rankDisplay = '🥉 #3';
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header with gradient background
+              GradientBackground(
+                gradient: gradient,
+                tier: tier,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  entry.displayName,
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  title,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.white.withOpacity(0.9),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isCurrentUser)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.amber,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Text(
+                                'YOU',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Level ${entry.stats.level}',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            rankDisplay,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Background: $backgroundTierName',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              // Stats section
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Top achievements badges
+                      if (topCategories.isNotEmpty) ...[
+                        const Text(
+                          'Top Achievements',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: topCategories.map((emoji) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                '#1 $emoji',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const Divider(height: 32),
+                      ],
+                      
+                      // Detailed stats
+                      const Text(
+                        'Statistics',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildStatRow(context, '🏆', 'Level', entry.stats.level.toString()),
+                      _buildStatRow(context, '⭐', 'Total XP', entry.stats.totalXp.round().toString()),
+                      _buildStatRow(context, '🎲', 'Total Plays', entry.stats.totalPlays.toString()),
+                      _buildStatRow(context, '🎮', 'Unique Games Played', entry.stats.uniqueGamesPlayed.toString()),
+                      _buildStatRow(context, '📚', 'Games Owned', entry.stats.gamesOwned.toString()),
+                      _buildStatRow(context, '🎯', 'Achievements Unlocked', entry.stats.achievementsUnlocked.toString()),
+                      _buildStatRow(context, '🔥', 'Current Streak', '${entry.stats.currentStreak} days'),
+                      _buildStatRow(context, '🌟', 'Longest Streak', '${entry.stats.longestStreak} days'),
+                      
+                      const Divider(height: 32),
+                      
+                      // Last updated
+                      Text(
+                        'Last updated: ${_formatDate(entry.lastUpdated)}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              // Close button
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatRow(BuildContext context, String emoji, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        children: [
+          Text(
+            emoji,
+            style: const TextStyle(fontSize: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+    
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes} minutes ago';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours} hours ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else {
+      return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    }
   }
 }

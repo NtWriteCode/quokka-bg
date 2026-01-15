@@ -132,6 +132,16 @@ class UserStats {
   
   int get xpForNextLevel => getXpRequiredForLevel(level + 1);
   
+  /// Calculate the true total accumulated XP (all levels + current progress)
+  double get totalAccumulatedXp {
+    double total = totalXp; // Current level progress
+    // Add XP from all previous levels
+    for (int i = 2; i <= level; i++) {
+      total += getXpRequiredForLevel(i);
+    }
+    return total;
+  }
+  
   UserStats copyWith({
     double? totalXp,
     int? level,
