@@ -704,9 +704,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               const SizedBox(height: 8),
-              _buildXpInfoItem(Icons.emoji_events, 'Bronze achievement', '10 XP', color: Colors.brown),
-              _buildXpInfoItem(Icons.emoji_events, 'Silver achievement', '25 XP', color: Colors.grey),
-              _buildXpInfoItem(Icons.emoji_events, 'Gold achievement', '50 XP', color: Colors.amber),
+              _buildXpInfoItem(Icons.emoji_events, 'Bronze achievement', '20 XP', color: Colors.brown),
+              _buildXpInfoItem(Icons.emoji_events, 'Silver achievement', '40 XP', color: Colors.grey),
+              _buildXpInfoItem(Icons.emoji_events, 'Gold achievement', '80 XP', color: Colors.amber),
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 8),
@@ -723,7 +723,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Play Streak Bonus: Play games daily to earn up to +100% XP!',
+                        'Play Streak Bonus: Play games daily to earn up to +100% XP on plays only!',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.orange.shade900,
