@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:quokka/repositories/game_repository.dart';
 import 'package:quokka/services/sync_service.dart';
@@ -76,15 +77,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
       if (choice == null) return;
 
-      // Show loading
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const Center(child: CircularProgressIndicator()),
-        );
-      }
-
       try {
         await _syncService.saveCredentials(
           url: _urlController.text.trim(),
@@ -92,30 +84,29 @@ class _SettingsPageState extends State<SettingsPage> {
           pass: _passController.text.trim(),
         );
 
-        if (choice == 'upload') {
-          // Force upload local data to server
-          await widget.repository.triggerManualSyncUp();
-        } else if (choice == 'download') {
-          // Force download from server
-          await widget.repository.loadGames();
-        } else if (choice == 'smart') {
-          // Let the normal sync logic decide
-          await widget.repository.loadGames();
-        }
-        
         setState(() => _hasCredentials = true);
-        
-        if (mounted) {
-          Navigator.pop(context); // Close loading
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('WebDAV Connected and Synced')),
+
+        // Perform sync with progress dialog
+        if (choice == 'upload') {
+          await _performSyncWithProgress(
+            syncOperation: () => widget.repository.triggerManualSyncUp(),
+            successMessage: 'WebDAV Connected and Data Uploaded',
+          );
+        } else if (choice == 'download') {
+          await _performSyncWithProgress(
+            syncOperation: () => widget.repository.loadGames(),
+            successMessage: 'WebDAV Connected and Data Synced',
+          );
+        } else if (choice == 'smart') {
+          await _performSyncWithProgress(
+            syncOperation: () => widget.repository.loadGames(),
+            successMessage: 'WebDAV Connected and Synced',
           );
         }
       } catch (e) {
         if (mounted) {
-          Navigator.pop(context); // Close loading
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error during sync: $e'), backgroundColor: Colors.red),
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
           );
         }
       }
@@ -135,15 +126,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
       if (confirm != true) return;
 
-      // Show loading
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const Center(child: CircularProgressIndicator()),
-        );
-      }
-
       try {
         await _syncService.saveCredentials(
           url: _urlController.text.trim(),
@@ -151,19 +133,14 @@ class _SettingsPageState extends State<SettingsPage> {
           pass: _passController.text.trim(),
         );
         
-        await widget.repository.loadGames();
-        
         setState(() => _hasCredentials = true);
         
-        if (mounted) {
-          Navigator.pop(context); // Close loading
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('WebDAV Connected')),
-          );
-        }
+        await _performSyncWithProgress(
+          syncOperation: () => widget.repository.loadGames(),
+          successMessage: 'WebDAV Connected',
+        );
       } catch (e) {
         if (mounted) {
-          Navigator.pop(context); // Close loading
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
           );
@@ -209,6 +186,94 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _hasCredentials = false);
   }
 
+  /// Perform sync operation with progress dialog after 2 seconds
+  Future<void> _performSyncWithProgress({
+    required Future<void> Function() syncOperation,
+    required String successMessage,
+  }) async {
+    bool dialogShown = false;
+    bool syncCompleted = false;
+    
+    // Start a timer to show dialog after 2 seconds
+    final timer = Timer(const Duration(seconds: 2), () {
+      if (!syncCompleted && mounted) {
+        dialogShown = true;
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                const Text('Syncing with server...'),
+                const SizedBox(height: 8),
+                Text(
+                  'This may take a while on slow connections',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Sync continues in background...'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Skip'),
+              ),
+            ],
+          ),
+        );
+      }
+    });
+
+    try {
+      // Perform the actual sync
+      await syncOperation();
+      syncCompleted = true;
+      timer.cancel();
+      
+      // Close dialog if it was shown
+      if (dialogShown && mounted) {
+        Navigator.pop(context);
+      }
+      
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(successMessage)),
+        );
+      }
+    } catch (e) {
+      syncCompleted = true;
+      timer.cancel();
+      
+      // Close dialog if it was shown
+      if (dialogShown && mounted) {
+        Navigator.pop(context);
+      }
+      
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sync failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -225,33 +290,10 @@ class _SettingsPageState extends State<SettingsPage> {
               leading: const Icon(Icons.cloud_upload_outlined),
               title: const Text('Force Upload to Server'),
               subtitle: const Text('Upload current local data to WebDAV'),
-              onTap: () async {
-                // Show loading
-                if (mounted) {
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (context) => const Center(child: CircularProgressIndicator()),
-                  );
-                }
-
-                try {
-                  await widget.repository.triggerManualSyncUp();
-                  if (mounted) {
-                    Navigator.pop(context); // Close loading
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Data uploaded to server successfully')),
-                    );
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    Navigator.pop(context); // Close loading
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.red),
-                    );
-                  }
-                }
-              },
+              onTap: () => _performSyncWithProgress(
+                syncOperation: () => widget.repository.triggerManualSyncUp(),
+                successMessage: 'Data uploaded to server successfully',
+              ),
             ),
             ListTile(
               leading: const Icon(Icons.cloud_download_outlined),
@@ -274,31 +316,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 );
 
                 if (confirm == true) {
-                  // Show loading
-                  if (mounted) {
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (context) => const Center(child: CircularProgressIndicator()),
-                    );
-                  }
-
-                  try {
-                    await widget.repository.loadGames();
-                    if (mounted) {
-                      Navigator.pop(context); // Close loading
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Data synced from server successfully')),
-                      );
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      Navigator.pop(context); // Close loading
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Sync failed: $e'), backgroundColor: Colors.red),
-                      );
-                    }
-                  }
+                  await _performSyncWithProgress(
+                    syncOperation: () => widget.repository.loadGames(),
+                    successMessage: 'Data synced from server successfully',
+                  );
                 }
               },
             ),
@@ -413,6 +434,57 @@ class _SettingsPageState extends State<SettingsPage> {
                       SnackBar(content: Text('Error resetting profile: $e'), backgroundColor: Colors.red),
                     );
                   }
+                }
+              }
+            },
+          ),
+          const Divider(),
+          _buildSectionHeader('Profile'),
+          ListTile(
+            leading: const Icon(Icons.person_outline),
+            title: const Text('Display Name'),
+            subtitle: Text(widget.repository.userStats.displayName.isEmpty 
+                ? 'Not set' 
+                : widget.repository.userStats.displayName),
+            trailing: const Icon(Icons.edit),
+            onTap: () async {
+              final controller = TextEditingController(
+                text: widget.repository.userStats.displayName,
+              );
+              
+              final newName = await showDialog<String>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Edit Display Name'),
+                  content: TextField(
+                    controller: controller,
+                    decoration: const InputDecoration(
+                      labelText: 'Display Name',
+                      hintText: 'Enter your display name',
+                      helperText: 'This name will be visible on the leaderboard',
+                    ),
+                    maxLength: 30,
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, controller.text.trim()),
+                      child: const Text('Save'),
+                    ),
+                  ],
+                ),
+              );
+              
+              if (newName != null && newName.isNotEmpty) {
+                await widget.repository.updateDisplayName(newName);
+                setState(() {});
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Display name updated')),
+                  );
                 }
               }
             },

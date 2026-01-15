@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'pages/played_games_page.dart';
 import 'pages/stats_page.dart';
 import 'pages/profile_page.dart';
 import 'pages/library_page.dart';
+import 'pages/leaderboard_page.dart';
 import 'widgets/achievement_dialog.dart';
 import 'widgets/level_up_dialog.dart';
 import 'repositories/game_repository.dart';
@@ -23,7 +25,10 @@ class QuokkaApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const RootPage(),
+      home: ChangeNotifierProvider<GameRepository>(
+        create: (_) => GameRepository(),
+        child: const RootPage(),
+      ),
     );
   }
 }
@@ -37,11 +42,12 @@ class RootPage extends StatefulWidget {
 
 class _RootPageState extends State<RootPage> {
   int _selectedIndex = 0;
-  final GameRepository _repository = GameRepository();
+  late GameRepository _repository;
 
   @override
   void initState() {
     super.initState();
+    _repository = context.read<GameRepository>();
     _repository.loadGames().then((_) {
       // Check daily login bonus after loading
       _repository.checkDailyLoginBonus();
@@ -94,6 +100,7 @@ class _RootPageState extends State<RootPage> {
       LibraryPage(repository: _repository),
       StatsPage(repository: _repository),
       PlayedGamesPage(repository: _repository),
+      const LeaderboardPage(),
       ProfilePage(repository: _repository),
     ];
 

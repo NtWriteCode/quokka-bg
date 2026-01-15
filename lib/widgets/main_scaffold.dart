@@ -34,6 +34,11 @@ class _MainScaffoldState extends State<MainScaffold> {
       label: 'Plays',
     ),
     NavigationDestination(
+      icon: Icon(Icons.leaderboard_outlined),
+      selectedIcon: Icon(Icons.leaderboard),
+      label: 'Leaderboard',
+    ),
+    NavigationDestination(
       icon: Icon(Icons.person_outline),
       selectedIcon: Icon(Icons.person),
       label: 'Profile',
@@ -55,6 +60,11 @@ class _MainScaffoldState extends State<MainScaffold> {
       icon: Icon(Icons.history_outlined),
       selectedIcon: Icon(Icons.history),
       label: Text('Plays'),
+    ),
+    NavigationRailDestination(
+      icon: Icon(Icons.leaderboard_outlined),
+      selectedIcon: Icon(Icons.leaderboard),
+      label: Text('Leaderboard'),
     ),
     NavigationRailDestination(
       icon: Icon(Icons.person_outline),

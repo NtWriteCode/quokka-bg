@@ -8,10 +8,12 @@ import 'package:quokka/models/board_game.dart';
 import 'package:quokka/models/play_record.dart';
 import 'package:quokka/models/player.dart';
 import 'package:quokka/models/user_stats.dart';
+import 'package:quokka/models/leaderboard_entry.dart';
 import 'package:quokka/services/sync_service.dart';
 import 'package:quokka/services/achievement_service.dart';
 import 'package:quokka/helpers/title_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 class GameRepository extends ChangeNotifier {
   List<BoardGame> _ownedGames = [];
@@ -410,6 +412,17 @@ class GameRepository extends ChangeNotifier {
       await loadPlays();
       await loadUserStats();
       notifyListeners();
+      
+      // Upload leaderboard entry after loading if feature is enabled
+      // This ensures the leaderboard is updated on app start
+      try {
+        final leaderboardEnabled = await _syncService.isLeaderboardEnabled();
+        if (leaderboardEnabled) {
+          await uploadLeaderboardEntry();
+        }
+      } catch (e) {
+        print('DEBUG: Leaderboard upload after load failed: $e');
+      }
     } catch (e) {
       print('DEBUG: Error loading games: $e');
       _ownedGames = [];
@@ -482,11 +495,18 @@ class GameRepository extends ChangeNotifier {
   Future<void> triggerManualSyncUp() async {
     final directory = await getApplicationDocumentsDirectory();
     await _syncService.upload(directory, _dataVersion);
+    
+    // Also upload leaderboard entry if enabled
+    final leaderboardEnabled = await _syncService.isLeaderboardEnabled();
+    if (leaderboardEnabled) {
+      await uploadLeaderboardEntry();
+    }
   }
 
   @override
   void dispose() {
     _unlockedController.close();
+    _levelUpController.close();
     super.dispose();
   }
 
@@ -523,6 +543,12 @@ class GameRepository extends ChangeNotifier {
       }
     }
     await _syncService.upload(directory, _dataVersion);
+    
+    // Also upload leaderboard entry if enabled
+    final leaderboardEnabled = await _syncService.isLeaderboardEnabled();
+    if (leaderboardEnabled) {
+      await uploadLeaderboardEntry();
+    }
   }
 
   Future<void> saveGames() async {
@@ -913,5 +939,106 @@ class GameRepository extends ChangeNotifier {
       print('DEBUG: Error resetting data: $e');
       rethrow;
     }
+  }
+
+  /// Initialize userId if not set
+  Future<void> ensureUserId() async {
+    if (_userStats.userId.isEmpty) {
+      const uuid = Uuid();
+      final newUserId = uuid.v4();
+      _userStats = _userStats.copyWith(userId: newUserId);
+      await saveUserStats();
+    }
+  }
+
+  /// Generate default display name if not set
+  String getDefaultDisplayName() {
+    final random = DateTime.now().millisecondsSinceEpoch % 10000;
+    return 'Player$random';
+  }
+
+  /// Update display name
+  Future<void> updateDisplayName(String name) async {
+    _userStats = _userStats.copyWith(displayName: name);
+    await saveUserStats();
+    notifyListeners();
+  }
+
+  /// Check if leaderboard is enabled
+  Future<bool> isLeaderboardEnabled() async {
+    return await _syncService.isLeaderboardEnabled();
+  }
+
+  /// Upload current user's leaderboard entry
+  Future<void> uploadLeaderboardEntry() async {
+    await ensureUserId();
+    
+    // If display name is empty, set a default
+    if (_userStats.displayName.isEmpty) {
+      _userStats = _userStats.copyWith(displayName: getDefaultDisplayName());
+      await saveUserStats();
+    }
+
+    // Calculate unique games played
+    final uniqueGames = _playRecords.map((p) => p.gameId).toSet().length;
+    
+    // Calculate longest streak (from play history)
+    int longestStreak = _calculateLongestStreak();
+
+    final entry = LeaderboardEntry(
+      userId: _userStats.userId,
+      displayName: _userStats.displayName,
+      customTitle: _userStats.customTitle,
+      customBackgroundTier: _userStats.customBackgroundTier,
+      lastUpdated: DateTime.now(),
+      stats: LeaderboardStats(
+        level: _userStats.level,
+        totalXp: _userStats.totalXp,
+        totalPlays: _userStats.totalPlays,
+        uniqueGamesPlayed: uniqueGames,
+        gamesOwned: _ownedGames.where((g) => g.status == GameStatus.owned).length,
+        achievementsUnlocked: _userStats.unlockedAchievementIds.length,
+        currentStreak: _userStats.consecutiveDays,
+        longestStreak: longestStreak,
+      ),
+    );
+
+    await _syncService.uploadLeaderboardEntry(entry);
+  }
+
+  /// Calculate longest streak from play history
+  int _calculateLongestStreak() {
+    if (_playRecords.isEmpty) return 0;
+
+    // Sort plays by date
+    final sortedPlays = List<PlayRecord>.from(_playRecords)
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    int maxStreak = 1;
+    int currentStreak = 1;
+    DateTime? lastDate;
+
+    for (final play in sortedPlays) {
+      final playDate = DateTime(play.date.year, play.date.month, play.date.day);
+      
+      if (lastDate != null) {
+        final diff = playDate.difference(lastDate).inDays;
+        if (diff == 1) {
+          currentStreak++;
+          maxStreak = currentStreak > maxStreak ? currentStreak : maxStreak;
+        } else if (diff > 1) {
+          currentStreak = 1;
+        }
+      }
+      
+      lastDate = playDate;
+    }
+
+    return maxStreak;
+  }
+
+  /// Download leaderboard
+  Future<List<LeaderboardEntry>> downloadLeaderboard() async {
+    return await _syncService.downloadLeaderboard();
   }
 }

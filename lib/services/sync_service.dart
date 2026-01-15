@@ -3,11 +3,14 @@ import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:webdav_client/webdav_client.dart' as webdav;
+import 'package:quokka/models/leaderboard_entry.dart';
 
 class SyncService {
   static const _storage = FlutterSecureStorage();
   static const _folderName = 'bg-tracker';
   static const _metadataFile = 'metadata.json';
+  static const _globalSharedFolder = 'global_shared/quokka_bg';
+  static const _leaderboardFolder = 'global_shared/quokka_bg/leaderboard';
 
   static const _keyUrl = 'webdav_url';
   static const _keyUser = 'webdav_user';
@@ -102,13 +105,6 @@ class SyncService {
         // Folder likely exists, ignore
       }
 
-      final remotePath = _folderName; // webdav client handles paths relative to base URL usually?
-      // Actually webdav_client usually treats paths as absolute if they start with /. 
-      // If we provided a base URL like https://dav.com/remote.php/webdav/, 
-      // operations usually append to it. 
-      // Let's use relative paths or ensure we handle it correctly.
-      // The library usually expects paths to NOT start with / if they are relative to the Base URL.
-      
       // Check metadata
       int remoteVersion = 0;
       try {
@@ -168,6 +164,73 @@ class SyncService {
       
     } catch (e) {
       print('DEBUG: Upload failed: $e');
+    }
+  }
+
+  /// Check if leaderboard feature is enabled on the server
+  /// Returns true if /global_shared exists (feature enabled server-side)
+  Future<bool> isLeaderboardEnabled() async {
+    final client = await _connect(logErrors: false);
+    if (client == null) return false;
+
+    try {
+      // Check if global_shared folder exists (this indicates feature is enabled)
+      await client.readDir('global_shared');
+      
+      // If it exists, ensure our subfolders are created
+      try { await client.mkdir(_globalSharedFolder); } catch (_) {}
+      try { await client.mkdir(_leaderboardFolder); } catch (_) {}
+      
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Upload user's leaderboard entry
+  Future<void> uploadLeaderboardEntry(LeaderboardEntry entry) async {
+    final client = await _connect();
+    if (client == null) return;
+
+    try {
+      // Folders should already be created by isLeaderboardEnabled check
+      // But ensure they exist just in case
+      try { await client.mkdir(_globalSharedFolder); } catch (_) {}
+      try { await client.mkdir(_leaderboardFolder); } catch (_) {}
+
+      final fileName = 'user_${entry.userId}.json';
+      final json = jsonEncode(entry.toJson());
+      await client.write('$_leaderboardFolder/$fileName', utf8.encode(json));
+    } catch (e) {
+      print('DEBUG: Leaderboard upload failed: $e');
+    }
+  }
+
+  /// Download all leaderboard entries
+  Future<List<LeaderboardEntry>> downloadLeaderboard() async {
+    final client = await _connect();
+    if (client == null) return [];
+
+    try {
+      final files = await client.readDir(_leaderboardFolder);
+      final entries = <LeaderboardEntry>[];
+
+      for (final file in files) {
+        if (file.name?.endsWith('.json') ?? false) {
+          try {
+            final content = await client.read('$_leaderboardFolder/${file.name}');
+            final json = jsonDecode(utf8.decode(content));
+            entries.add(LeaderboardEntry.fromJson(json));
+          } catch (e) {
+            print('DEBUG: Failed to parse leaderboard entry ${file.name}: $e');
+          }
+        }
+      }
+
+      return entries;
+    } catch (e) {
+      print('DEBUG: Leaderboard download failed: $e');
+      return [];
     }
   }
 }

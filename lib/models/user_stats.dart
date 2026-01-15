@@ -82,6 +82,10 @@ class UserStats {
   // Customization
   final String? customTitle; // null means use level-based title
   final int? customBackgroundTier; // null means use level-based background
+  
+  // Leaderboard
+  final String userId; // Unique identifier for leaderboard
+  final String displayName; // Public display name for leaderboard
 
   UserStats({
     this.totalXp = 0.0,
@@ -99,7 +103,10 @@ class UserStats {
     this.streakBonus = 0.0,
     this.customTitle,
     this.customBackgroundTier,
-  });
+    String? userId,
+    String? displayName,
+  }) : userId = userId ?? '',
+       displayName = displayName ?? '';
 
   /// Calculate XP required to reach a specific level from the previous level
   /// For example: getXpRequiredForLevel(2) returns XP needed to go from level 1 to level 2
@@ -141,6 +148,8 @@ class UserStats {
     double? streakBonus,
     Object? customTitle = _notProvided,
     Object? customBackgroundTier = _notProvided,
+    String? userId,
+    String? displayName,
   }) {
     return UserStats(
       totalXp: totalXp ?? this.totalXp,
@@ -158,6 +167,8 @@ class UserStats {
       streakBonus: streakBonus ?? this.streakBonus,
       customTitle: customTitle == _notProvided ? this.customTitle : customTitle as String?,
       customBackgroundTier: customBackgroundTier == _notProvided ? this.customBackgroundTier : customBackgroundTier as int?,
+      userId: userId ?? this.userId,
+      displayName: displayName ?? this.displayName,
     );
   }
 
@@ -179,6 +190,8 @@ class UserStats {
         'streakBonus': streakBonus,
         'customTitle': customTitle,
         'customBackgroundTier': customBackgroundTier,
+        'userId': userId,
+        'displayName': displayName,
       };
 
   factory UserStats.fromJson(Map<String, dynamic> json) => UserStats(
@@ -197,5 +210,7 @@ class UserStats {
         totalWins: json['totalWins'] ?? 0,
         customTitle: json['customTitle'],
         customBackgroundTier: json['customBackgroundTier'],
+        userId: json['userId'],
+        displayName: json['displayName'],
       );
 }
