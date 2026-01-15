@@ -38,6 +38,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
   }
 
   Future<void> _loadLeaderboard() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     
     final repository = context.read<GameRepository>();
@@ -45,8 +46,11 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
     // Check if leaderboard is enabled
     final enabled = await repository.isLeaderboardEnabled();
     
+    if (!mounted) return;
+    
     if (enabled) {
       final entries = await repository.downloadLeaderboard();
+      if (!mounted) return;
       setState(() {
         _entries = entries;
         _isEnabled = true;
