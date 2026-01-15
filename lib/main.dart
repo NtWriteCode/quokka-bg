@@ -111,7 +111,9 @@ class _RootPageState extends State<RootPage> {
           _selectedIndex = index;
         });
       },
-      child: pages[_selectedIndex],
+      child: SafeArea(
+        child: pages[_selectedIndex],
+      ),
     );
   }
 }
