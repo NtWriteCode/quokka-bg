@@ -156,6 +156,8 @@ class _SettingsPageState extends State<SettingsPage> {
       user: _userController.text.trim(),
       pass: _passController.text.trim(),
     );
+    
+    if (!mounted) return;
     setState(() => _isTesting = false);
     
     if (mounted) {

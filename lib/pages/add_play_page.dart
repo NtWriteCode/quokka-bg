@@ -384,6 +384,8 @@ class _GamePickerSheetState extends State<_GamePickerSheet> {
     }
     setState(() => _isSearching = true);
     final results = await widget.repository.searchBgg(query);
+    
+    if (!mounted) return;
     setState(() {
       _bggResults = results;
       _isSearching = false;
