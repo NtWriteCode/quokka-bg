@@ -1030,7 +1030,7 @@ class _CustomizationDialogState extends State<_CustomizationDialog> with SingleT
               onChanged: (val) => setState(() => _selectedTitle = val),
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }

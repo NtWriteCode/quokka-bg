@@ -351,7 +351,9 @@ class _AddPlayPageState extends State<AddPlayPage> {
   @override
   void dispose() {
     _durationController.dispose();
-    for (var c in _scoreControllers.values) c.dispose();
+    for (var c in _scoreControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:quokka/models/play_filter.dart';
 import 'package:quokka/models/board_game.dart';
-import 'package:quokka/models/player.dart';
 import 'package:quokka/repositories/game_repository.dart';
 
 class PlayFilterSheet extends StatefulWidget {
@@ -158,7 +157,7 @@ class _PlayFilterSheetState extends State<PlayFilterSheet> {
                   // Winner Filter
                   _buildSectionTitle('Winner'),
                   DropdownButtonFormField<String?>(
-                    value: _filter.winnerId,
+                    initialValue: _filter.winnerId,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),

@@ -292,7 +292,7 @@ class _PlayedGamesPageState extends State<PlayedGamesPage> {
       ));
     }
 
-    return Container(
+    return SizedBox(
       height: 50,
       child: ListView(
         scrollDirection: Axis.horizontal,
@@ -330,7 +330,7 @@ class _FilterChip extends StatelessWidget {
         label: Text(label, style: const TextStyle(fontSize: 12)),
         onDeleted: onDeleted,
         deleteIconColor: Colors.grey,
-        backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
       ),
     );
   }

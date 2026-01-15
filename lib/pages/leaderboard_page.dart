@@ -456,8 +456,9 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
 
     // Rank display
     String rankDisplay = '#$rank';
-    if (rank == 1) rankDisplay = '🥇 #1';
-    else if (rank == 2) rankDisplay = '🥈 #2';
+    if (rank == 1) {
+      rankDisplay = '🥇 #1';
+    } else if (rank == 2) rankDisplay = '🥈 #2';
     else if (rank == 3) rankDisplay = '🥉 #3';
 
     showDialog(
