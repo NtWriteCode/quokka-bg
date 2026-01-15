@@ -391,7 +391,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         const Icon(Icons.local_fire_department, color: Colors.orange, size: 18),
                         const SizedBox(width: 4),
                         Text(
-                          'Streak Bonus: ${stats.consecutiveDays} days • +${(stats.streakBonus * 100).round()}%',
+                          'Play Streak Bonus: ${stats.consecutiveDays} days • +${(stats.streakBonus * 100).round()}%',
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -723,7 +723,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Streak Bonus: Play games daily to earn up to +100% XP!',
+                        'Play Streak Bonus: Play games daily to earn up to +100% XP!',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.orange.shade900,

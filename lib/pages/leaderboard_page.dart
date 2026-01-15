@@ -617,8 +617,8 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                       _buildStatRow(context, '🎮', 'Unique Games Played', entry.stats.uniqueGamesPlayed.toString()),
                       _buildStatRow(context, '📚', 'Games Owned', entry.stats.gamesOwned.toString()),
                       _buildStatRow(context, '🎯', 'Achievements Unlocked', entry.stats.achievementsUnlocked.toString()),
-                      _buildStatRow(context, '🔥', 'Current Streak', '${entry.stats.currentStreak} days'),
-                      _buildStatRow(context, '🌟', 'Longest Streak', '${entry.stats.longestStreak} days'),
+                      _buildStatRow(context, '🔥', 'Current Play Streak', '${entry.stats.currentStreak} days'),
+                      _buildStatRow(context, '🌟', 'Longest Play Streak', '${entry.stats.longestStreak} days'),
                       
                       const Divider(height: 32),
                       
