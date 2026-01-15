@@ -9,7 +9,7 @@ enum LeaderboardCategory {
   level('Level', '🏆'),
   totalPlays('Total Plays', '🎲'),
   currentStreak('Current Play Streak', '🔥'),
-  gamesOwned('Games Owned', '📚'),
+  gamesOwned('Total Owned', '📚'),
   achievements('Achievements', '🎯'),
   longestStreak('Longest Play Streak', '🌟');
 
@@ -619,7 +619,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                       _buildStatRow(context, '⭐', 'Total XP', entry.stats.totalXp.round().toString()),
                       _buildStatRow(context, '🎲', 'Total Plays', entry.stats.totalPlays.toString()),
                       _buildStatRow(context, '🎮', 'Unique Games Played', entry.stats.uniqueGamesPlayed.toString()),
-                      _buildStatRow(context, '📚', 'Games Owned', entry.stats.gamesOwned.toString()),
+                      _buildStatRow(context, '📚', 'Total Owned (incl. lended)', entry.stats.gamesOwned.toString()),
                       _buildStatRow(context, '🎯', 'Achievements Unlocked', entry.stats.achievementsUnlocked.toString()),
                       _buildStatRow(context, '🔥', 'Current Play Streak', '${entry.stats.currentStreak} days'),
                       _buildStatRow(context, '🌟', 'Longest Play Streak', '${entry.stats.longestStreak} days'),

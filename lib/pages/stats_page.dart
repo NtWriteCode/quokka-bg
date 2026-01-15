@@ -68,11 +68,11 @@ class _StatsPageState extends State<StatsPage> {
               crossAxisSpacing: 12,
               childAspectRatio: 2,
               children: [
-                _StatCard(label: 'Owned', value: helper.ownedCount.toString(), color: Colors.blue),
+                _StatCard(label: 'In Possession', value: helper.ownedCount.toString(), color: Colors.blue),
                 _StatCard(label: 'Wishlist', value: helper.wishlistCount.toString(), color: Colors.pink),
-                _StatCard(label: 'Lended', value: helper.lendedCount.toString(), color: Colors.cyan),
+                _StatCard(label: 'Lended Out', value: helper.lendedCount.toString(), color: Colors.cyan),
                 _StatCard(label: 'Sold', value: helper.soldCount.toString(), color: Colors.orange),
-                _StatCard(label: 'Other (Unowned)', value: helper.unownedCount.toString(), color: Colors.purple),
+                _StatCard(label: 'Played (Not Owned)', value: helper.unownedCount.toString(), color: Colors.purple),
                 _StatCard(
                   label: 'Plays (${_selectedPeriod.name})',
                   value: helper.getPlaysInPeriod(_selectedPeriod).length.toString(),

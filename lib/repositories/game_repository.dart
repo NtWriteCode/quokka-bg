@@ -996,7 +996,7 @@ class GameRepository extends ChangeNotifier {
         totalXp: _userStats.totalAccumulatedXp, // Use total accumulated XP
         totalPlays: _userStats.totalPlays,
         uniqueGamesPlayed: uniqueGames,
-        gamesOwned: _ownedGames.where((g) => g.status == GameStatus.owned).length,
+        gamesOwned: _ownedGames.where((g) => g.status == GameStatus.owned || g.status == GameStatus.lended).length,
         achievementsUnlocked: _userStats.unlockedAchievementIds.length,
         currentStreak: _userStats.consecutiveDays,
         longestStreak: longestStreak,
