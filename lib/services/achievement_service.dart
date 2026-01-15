@@ -101,6 +101,14 @@ class AchievementService {
           xpReward: 20,
           category: 'The Tactician',
         ),
+        Achievement(
+          id: 'game_master',
+          title: 'Game Master',
+          description: 'Play the same game 10+ times',
+          tier: AchievementTier.silver,
+          xpReward: 40,
+          category: 'The Tactician',
+        ),
 
         // Competitor
         Achievement(
@@ -136,11 +144,51 @@ class AchievementService {
           category: 'The Competitor',
         ),
         Achievement(
+          id: 'players_10',
+          title: 'Community Builder',
+          description: 'Add 10 unique players',
+          tier: AchievementTier.silver,
+          xpReward: 40,
+          category: 'The Competitor',
+        ),
+        Achievement(
+          id: 'players_20',
+          title: 'Convention Organizer',
+          description: 'Add 20 unique players',
+          tier: AchievementTier.gold,
+          xpReward: 80,
+          category: 'The Competitor',
+        ),
+        Achievement(
           id: 'distinct_10',
           title: 'Variety Show',
           description: 'Play 10 distinct games',
           tier: AchievementTier.silver,
           xpReward: 40,
+          category: 'The Competitor',
+        ),
+        Achievement(
+          id: 'distinct_50',
+          title: 'Polymath',
+          description: 'Play 50 distinct games',
+          tier: AchievementTier.gold,
+          xpReward: 80,
+          category: 'The Competitor',
+        ),
+        Achievement(
+          id: 'winning_streak_3',
+          title: 'On Fire',
+          description: 'Win 3 games in a row',
+          tier: AchievementTier.silver,
+          xpReward: 40,
+          category: 'The Competitor',
+        ),
+        Achievement(
+          id: 'close_call',
+          title: 'Nail Biter',
+          description: 'Win by exactly 1 point',
+          tier: AchievementTier.bronze,
+          xpReward: 20,
           category: 'The Competitor',
         ),
 
@@ -211,6 +259,14 @@ class AchievementService {
           xpReward: 40,
           category: 'The Expansionist',
         ),
+        Achievement(
+          id: 'expansion_single_game',
+          title: 'Super Fan',
+          description: 'Own 5+ expansions for a single game',
+          tier: AchievementTier.silver,
+          xpReward: 40,
+          category: 'The Expansionist',
+        ),
         
         // Complexity achievements
         Achievement(
@@ -261,6 +317,30 @@ class AchievementService {
           id: 'max_players',
           title: 'Party Host',
           description: 'Play a game with its maximum player count (3+ players)',
+          tier: AchievementTier.silver,
+          xpReward: 40,
+          category: 'The Social',
+        ),
+        Achievement(
+          id: 'play_6_players',
+          title: 'Full House',
+          description: 'Play with 6+ players',
+          tier: AchievementTier.bronze,
+          xpReward: 20,
+          category: 'The Social',
+        ),
+        Achievement(
+          id: 'play_10_players',
+          title: 'Epic Gathering',
+          description: 'Play with 10+ players',
+          tier: AchievementTier.silver,
+          xpReward: 40,
+          category: 'The Social',
+        ),
+        Achievement(
+          id: 'regular_crew',
+          title: 'Regular Crew',
+          description: 'Play 10+ games with the same 3+ players',
           tier: AchievementTier.silver,
           xpReward: 40,
           category: 'The Social',
@@ -342,6 +422,58 @@ class AchievementService {
           tier: AchievementTier.gold,
           xpReward: 80,
           category: 'The Collector',
+        ),
+        
+        // Collection variety achievements
+        Achievement(
+          id: 'decade_collector',
+          title: 'Time Traveler',
+          description: 'Own games from 3+ different decades',
+          tier: AchievementTier.silver,
+          xpReward: 40,
+          category: 'The Collector',
+        ),
+        Achievement(
+          id: 'vintage_collector',
+          title: 'Vintage Collector',
+          description: 'Own a game published in 1990 or earlier',
+          tier: AchievementTier.gold,
+          xpReward: 80,
+          category: 'The Collector',
+        ),
+        Achievement(
+          id: 'high_roller',
+          title: 'High Roller',
+          description: 'Own a game worth \$100+',
+          tier: AchievementTier.silver,
+          xpReward: 40,
+          category: 'The Collector',
+        ),
+        Achievement(
+          id: 'complete_set',
+          title: 'Complete Set',
+          description: 'Own a base game and all its expansions',
+          tier: AchievementTier.gold,
+          xpReward: 80,
+          category: 'The Collector',
+        ),
+        
+        // Meta achievements
+        Achievement(
+          id: 'achievement_hunter_25',
+          title: 'Achievement Hunter',
+          description: 'Unlock 25 achievements',
+          tier: AchievementTier.silver,
+          xpReward: 40,
+          category: 'Meta',
+        ),
+        Achievement(
+          id: 'weekend_warrior',
+          title: 'Weekend Warrior',
+          description: 'Play 5+ games in a single weekend',
+          tier: AchievementTier.gold,
+          xpReward: 80,
+          category: 'Meta',
         ),
       ];
 }

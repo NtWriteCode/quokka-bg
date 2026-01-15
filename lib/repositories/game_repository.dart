@@ -202,8 +202,17 @@ class GameRepository extends ChangeNotifier {
         case 'plays_10': shouldUnlock = _userStats.totalPlays >= 10; break;
         case 'win_1': shouldUnlock = _userStats.totalWins >= 1; break;
         case 'players_5': shouldUnlock = _players.length >= 5; break;
+        case 'players_10': shouldUnlock = _players.length >= 10; break;
+        case 'players_20': shouldUnlock = _players.length >= 20; break;
         case 'wish_1': shouldUnlock = _ownedGames.any((g) => g.isWishlist); break;
         case 'wish_to_own_1': shouldUnlock = _userStats.wishlistConversions >= 1; break;
+        
+        // Variety achievements
+        case 'distinct_50': {
+          final uniqueGames = _playRecords.map((p) => p.gameId).toSet();
+          shouldUnlock = uniqueGames.length >= 50;
+          break;
+        }
         
         // Expansionist achievements
         case 'expansion_1': 
@@ -298,6 +307,42 @@ class GameRepository extends ChangeNotifier {
           break;
         }
         
+        // Winning streak
+        case 'winning_streak_3': {
+          shouldUnlock = _checkWinningStreak(3);
+          break;
+        }
+        
+        // Close call
+        case 'close_call': {
+          shouldUnlock = _checkCloseCall();
+          break;
+        }
+        
+        // Game master
+        case 'game_master': {
+          final gamePlayCounts = <String, int>{};
+          for (final play in _playRecords) {
+            gamePlayCounts[play.gameId] = (gamePlayCounts[play.gameId] ?? 0) + 1;
+          }
+          shouldUnlock = gamePlayCounts.values.any((count) => count >= 10);
+          break;
+        }
+        
+        // Player count achievements
+        case 'play_6_players': {
+          shouldUnlock = _playRecords.any((p) => p.playerScores.length >= 6);
+          break;
+        }
+        case 'play_10_players': {
+          shouldUnlock = _playRecords.any((p) => p.playerScores.length >= 10);
+          break;
+        }
+        case 'regular_crew': {
+          shouldUnlock = _checkRegularCrew();
+          break;
+        }
+        
         // Player count ownership achievements
         case 'own_solo_game': {
           // Check if any owned game is solo-only (min=1, max=1)
@@ -324,6 +369,62 @@ class GameRepository extends ChangeNotifier {
             g.maxPlayers != null && 
             g.maxPlayers! >= 8
           );
+          break;
+        }
+        
+        // Collection variety achievements
+        case 'decade_collector': {
+          final decades = _ownedGames
+              .where((g) => (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+                           g.yearPublished != null)
+              .map((g) => (g.yearPublished! / 10).floor() * 10)
+              .toSet();
+          shouldUnlock = decades.length >= 3;
+          break;
+        }
+        case 'vintage_collector': {
+          shouldUnlock = _ownedGames.any((g) => 
+            (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+            g.yearPublished != null && 
+            g.yearPublished! <= 1990
+          );
+          break;
+        }
+        case 'high_roller': {
+          shouldUnlock = _ownedGames.any((g) => 
+            (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+            g.price != null && 
+            g.price! >= 100
+          );
+          break;
+        }
+        case 'complete_set': {
+          shouldUnlock = _checkCompleteSet();
+          break;
+        }
+        
+        // Expansion achievements
+        case 'expansion_single_game': {
+          final expansionsByParent = <String, int>{};
+          for (final game in _ownedGames) {
+            if (game.isExpansion && 
+                game.status == GameStatus.owned && 
+                game.parentGameId != null) {
+              expansionsByParent[game.parentGameId!] = 
+                  (expansionsByParent[game.parentGameId!] ?? 0) + 1;
+            }
+          }
+          shouldUnlock = expansionsByParent.values.any((count) => count >= 5);
+          break;
+        }
+        
+        // Meta achievements
+        case 'achievement_hunter_25': {
+          shouldUnlock = _userStats.unlockedAchievementIds.length >= 25;
+          break;
+        }
+        case 'weekend_warrior': {
+          shouldUnlock = _checkWeekendWarrior();
           break;
         }
         
@@ -1385,5 +1486,125 @@ class GameRepository extends ChangeNotifier {
              g.maxPlayers != null && 
              g.maxPlayers! >= 8,
     );
+  }
+
+  /// Check if user has won N games in a row
+  bool _checkWinningStreak(int streakLength) {
+    if (_playRecords.length < streakLength) return false;
+    
+    // Sort plays by date
+    final sortedPlays = List<PlayRecord>.from(_playRecords)
+      ..sort((a, b) => a.date.compareTo(b.date));
+    
+    int currentStreak = 0;
+    String? currentUserId; // We don't track this, so check if ANY player won consecutively
+    
+    for (final play in sortedPlays) {
+      if (play.winnerId != null) {
+        if (currentUserId == null || currentUserId == play.winnerId) {
+          currentUserId = play.winnerId;
+          currentStreak++;
+          if (currentStreak >= streakLength) return true;
+        } else {
+          currentUserId = play.winnerId;
+          currentStreak = 1;
+        }
+      } else {
+        currentStreak = 0;
+        currentUserId = null;
+      }
+    }
+    
+    return false;
+  }
+
+  /// Check if user won by exactly 1 point
+  bool _checkCloseCall() {
+    for (final play in _playRecords) {
+      if (play.winnerId == null || play.playerScores.isEmpty) continue;
+      
+      final scores = play.playerScores.values.where((s) => s != null).map((s) => s!).toList();
+      if (scores.length < 2) continue;
+      
+      scores.sort((a, b) => b.compareTo(a)); // Sort descending
+      final winningScore = scores[0];
+      final secondScore = scores[1];
+      
+      if (winningScore - secondScore == 1) return true;
+    }
+    
+    return false;
+  }
+
+  /// Check if user played 10+ games with the same 3+ players
+  bool _checkRegularCrew() {
+    // Group plays by player set
+    final crewCounts = <String, int>{};
+    
+    for (final play in _playRecords) {
+      if (play.playerScores.length < 3) continue;
+      
+      // Create a unique key for this player combination
+      final playerIds = play.playerScores.keys.toList()..sort();
+      final crewKey = playerIds.join(',');
+      
+      crewCounts[crewKey] = (crewCounts[crewKey] ?? 0) + 1;
+    }
+    
+    return crewCounts.values.any((count) => count >= 10);
+  }
+
+  /// Check if user owns a complete set (base + all expansions)
+  bool _checkCompleteSet() {
+    // Get all base games that have expansions
+    final baseGamesWithExpansions = <String>{};
+    for (final game in _ownedGames) {
+      if (game.isExpansion && 
+          game.status == GameStatus.owned && 
+          game.parentGameId != null) {
+        baseGamesWithExpansions.add(game.parentGameId!);
+      }
+    }
+    
+    // Check if we own any of these base games
+    for (final baseGameId in baseGamesWithExpansions) {
+      final baseGame = _ownedGames.firstWhere(
+        (g) => g.id == baseGameId && (g.status == GameStatus.owned || g.status == GameStatus.lended),
+        orElse: () => BoardGame(id: '', name: '', dateAdded: DateTime.now()),
+      );
+      
+      if (baseGame.id.isNotEmpty) {
+        // We own this base game, so we have at least one complete set
+        // (We can't verify if ALL expansions are owned without BGG API data)
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  /// Check if user played 5+ games in a single weekend (Saturday-Sunday)
+  bool _checkWeekendWarrior() {
+    // Group plays by weekend
+    final weekendCounts = <String, int>{};
+    
+    for (final play in _playRecords) {
+      final date = play.date;
+      
+      // Find the Saturday of this week
+      DateTime saturday;
+      if (date.weekday == DateTime.saturday) {
+        saturday = DateTime(date.year, date.month, date.day);
+      } else if (date.weekday == DateTime.sunday) {
+        saturday = DateTime(date.year, date.month, date.day - 1);
+      } else {
+        continue; // Not a weekend play
+      }
+      
+      final weekendKey = '${saturday.year}-${saturday.month}-${saturday.day}';
+      weekendCounts[weekendKey] = (weekendCounts[weekendKey] ?? 0) + 1;
+    }
+    
+    return weekendCounts.values.any((count) => count >= 5);
   }
 }
