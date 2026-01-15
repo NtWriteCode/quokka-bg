@@ -224,6 +224,151 @@ class GameRepository extends ChangeNotifier {
           shouldUnlock = parentIds.length >= 5;
           break;
         }
+        
+        // Complexity achievements
+        case 'complexity_simplest': {
+          final simplestGame = getSimplestGame();
+          if (simplestGame != null) {
+            shouldUnlock = _playRecords.any((p) => p.gameId == simplestGame.id);
+          }
+          break;
+        }
+        case 'complexity_hardest': {
+          final hardestGame = getHardestGame();
+          if (hardestGame != null) {
+            shouldUnlock = _playRecords.any((p) => p.gameId == hardestGame.id);
+          }
+          break;
+        }
+        
+        // Rating achievements
+        case 'rating_lowest': {
+          final lowestRated = getLowestRatedGame();
+          if (lowestRated != null) {
+            shouldUnlock = _playRecords.any((p) => p.gameId == lowestRated.id);
+          }
+          break;
+        }
+        case 'rating_highest': {
+          final highestRated = getHighestRatedGame();
+          if (highestRated != null) {
+            shouldUnlock = _playRecords.any((p) => p.gameId == highestRated.id);
+          }
+          break;
+        }
+        
+        // Player count achievements
+        case 'solo_player': {
+          // Check if any play has exactly 1 player (solo)
+          shouldUnlock = _playRecords.any((p) => p.playerScores.length == 1);
+          break;
+        }
+        case 'max_players': {
+          // Check if any play was with max players (and max is 3+)
+          for (final play in _playRecords) {
+            final game = _ownedGames.firstWhere(
+              (g) => g.id == play.gameId,
+              orElse: () => BoardGame(id: '', name: '', dateAdded: DateTime.now()),
+            );
+            if (game.maxPlayers != null && game.maxPlayers! >= 3) {
+              if (play.playerScores.length == game.maxPlayers) {
+                shouldUnlock = true;
+                break;
+              }
+            }
+          }
+          break;
+        }
+        
+        // Purchase achievements
+        case 'buy_new_game': {
+          // Check if any owned game was purchased new
+          shouldUnlock = _ownedGames.any((g) => 
+            (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+            g.isNew == true
+          );
+          break;
+        }
+        case 'buy_used_game': {
+          // Check if any owned game was purchased used
+          shouldUnlock = _ownedGames.any((g) => 
+            (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+            g.isNew == false
+          );
+          break;
+        }
+        
+        // Player count ownership achievements
+        case 'own_solo_game': {
+          // Check if any owned game is solo-only (min=1, max=1)
+          shouldUnlock = _ownedGames.any((g) => 
+            (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+            g.minPlayers == 1 && 
+            g.maxPlayers == 1
+          );
+          break;
+        }
+        case 'own_duo_game': {
+          // Check if any owned game is 2-player only (min=2, max=2)
+          shouldUnlock = _ownedGames.any((g) => 
+            (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+            g.minPlayers == 2 && 
+            g.maxPlayers == 2
+          );
+          break;
+        }
+        case 'own_party_game': {
+          // Check if any owned game supports 8+ players
+          shouldUnlock = _ownedGames.any((g) => 
+            (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+            g.maxPlayers != null && 
+            g.maxPlayers! >= 8
+          );
+          break;
+        }
+        
+        // Collection expansion achievements (20+ games required)
+        // Auto-complete if user has extreme values that are nearly impossible to beat
+        case 'buy_new_best_rated': {
+          final ownedCount = _ownedGames.where((g) => g.status == GameStatus.owned || g.status == GameStatus.lended).length;
+          if (ownedCount >= 20) {
+            final highest = getHighestRatedGame();
+            if (highest != null && highest.averageRating != null && highest.averageRating! >= 9.0) {
+              shouldUnlock = true; // Auto-complete for rating >= 9.0
+            }
+          }
+          break;
+        }
+        case 'buy_new_worst_rated': {
+          final ownedCount = _ownedGames.where((g) => g.status == GameStatus.owned || g.status == GameStatus.lended).length;
+          if (ownedCount >= 20) {
+            final lowest = getLowestRatedGame();
+            if (lowest != null && lowest.averageRating != null && lowest.averageRating! <= 2.0) {
+              shouldUnlock = true; // Auto-complete for rating <= 2.0
+            }
+          }
+          break;
+        }
+        case 'buy_new_most_complex': {
+          final ownedCount = _ownedGames.where((g) => g.status == GameStatus.owned || g.status == GameStatus.lended).length;
+          if (ownedCount >= 20) {
+            final hardest = getHardestGame();
+            if (hardest != null && hardest.averageWeight != null && hardest.averageWeight! >= 4.5) {
+              shouldUnlock = true; // Auto-complete for weight >= 4.5
+            }
+          }
+          break;
+        }
+        case 'buy_new_least_complex': {
+          final ownedCount = _ownedGames.where((g) => g.status == GameStatus.owned || g.status == GameStatus.lended).length;
+          if (ownedCount >= 20) {
+            final simplest = getSimplestGame();
+            if (simplest != null && simplest.averageWeight != null && simplest.averageWeight! <= 1.2) {
+              shouldUnlock = true; // Auto-complete for weight <= 1.2
+            }
+          }
+          break;
+        }
       }
       
       if (shouldUnlock) {
@@ -231,6 +376,96 @@ class GameRepository extends ChangeNotifier {
       }
     }
     
+    if (newUnlocks.isNotEmpty) {
+      _userStats = _userStats.copyWith(
+        unlockedAchievementIds: [
+          ..._userStats.unlockedAchievementIds,
+          ...newUnlocks.map((e) => e.id),
+        ],
+      );
+      for (final ach in newUnlocks) {
+        await addXp(ach.xpReward.toDouble(), 'Achievement: ${ach.title}');
+      }
+      _unlockedController.add(newUnlocks);
+      await saveUserStats();
+    }
+  }
+
+  /// Check purchase achievements when a new game is added
+  /// This checks if the new game breaks records for best/worst rated or most/least complex
+  Future<void> _checkPurchaseAchievements(BoardGame newGame) async {
+    // Only check if we have 20+ games (excluding the new one)
+    final ownedGames = _ownedGames.where((g) => 
+      (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+      g.id != newGame.id
+    ).toList();
+    
+    if (ownedGames.length < 20) return;
+    
+    final newUnlocks = <Achievement>[];
+    final all = AchievementService.allAchievements;
+    
+    // Check if new game is the highest rated
+    if (newGame.averageRating != null && 
+        !_userStats.unlockedAchievementIds.contains('buy_new_best_rated')) {
+      final currentBest = ownedGames
+          .where((g) => g.averageRating != null)
+          .fold<double?>(null, (max, g) => max == null || g.averageRating! > max ? g.averageRating : max);
+      
+      // Unlock if new game beats current best, OR if new game is >= 9.0 (extremely high)
+      if ((currentBest != null && newGame.averageRating! > currentBest) ||
+          newGame.averageRating! >= 9.0) {
+        final ach = all.firstWhere((a) => a.id == 'buy_new_best_rated');
+        newUnlocks.add(ach);
+      }
+    }
+    
+    // Check if new game is the lowest rated
+    if (newGame.averageRating != null && 
+        !_userStats.unlockedAchievementIds.contains('buy_new_worst_rated')) {
+      final currentWorst = ownedGames
+          .where((g) => g.averageRating != null)
+          .fold<double?>(null, (min, g) => min == null || g.averageRating! < min ? g.averageRating : min);
+      
+      // Unlock if new game beats current worst, OR if new game is <= 2.0 (extremely low)
+      if ((currentWorst != null && newGame.averageRating! < currentWorst) ||
+          newGame.averageRating! <= 2.0) {
+        final ach = all.firstWhere((a) => a.id == 'buy_new_worst_rated');
+        newUnlocks.add(ach);
+      }
+    }
+    
+    // Check if new game is the most complex
+    if (newGame.averageWeight != null && 
+        !_userStats.unlockedAchievementIds.contains('buy_new_most_complex')) {
+      final currentMost = ownedGames
+          .where((g) => g.averageWeight != null)
+          .fold<double?>(null, (max, g) => max == null || g.averageWeight! > max ? g.averageWeight : max);
+      
+      // Unlock if new game beats current most, OR if new game is >= 4.5 (extremely complex)
+      if ((currentMost != null && newGame.averageWeight! > currentMost) ||
+          newGame.averageWeight! >= 4.5) {
+        final ach = all.firstWhere((a) => a.id == 'buy_new_most_complex');
+        newUnlocks.add(ach);
+      }
+    }
+    
+    // Check if new game is the least complex
+    if (newGame.averageWeight != null && 
+        !_userStats.unlockedAchievementIds.contains('buy_new_least_complex')) {
+      final currentLeast = ownedGames
+          .where((g) => g.averageWeight != null)
+          .fold<double?>(null, (min, g) => min == null || g.averageWeight! < min ? g.averageWeight : min);
+      
+      // Unlock if new game beats current least, OR if new game is <= 1.2 (extremely simple)
+      if ((currentLeast != null && newGame.averageWeight! < currentLeast) ||
+          newGame.averageWeight! <= 1.2) {
+        final ach = all.firstWhere((a) => a.id == 'buy_new_least_complex');
+        newUnlocks.add(ach);
+      }
+    }
+    
+    // Award achievements
     if (newUnlocks.isNotEmpty) {
       _userStats = _userStats.copyWith(
         unlockedAchievementIds: [
@@ -411,6 +646,10 @@ class GameRepository extends ChangeNotifier {
       await loadPlayers();
       await loadPlays();
       await loadUserStats();
+      
+      // Check achievements after loading (for auto-unlocks)
+      await checkAchievements();
+      
       notifyListeners();
       
       // Upload leaderboard entry after loading if feature is enabled
@@ -595,6 +834,10 @@ class GameRepository extends ChangeNotifier {
       await addXp(1.0, 'Added to Wishlist: ${game.name}');
     } else {
       await addXp(10.0, 'New Collection Entry: ${game.name}');
+      // Check if this new game breaks any collection records
+      if (game.status == GameStatus.owned || game.status == GameStatus.lended) {
+        await _checkPurchaseAchievements(game);
+      }
     }
     await checkAchievements();
   }
@@ -727,6 +970,10 @@ class GameRepository extends ChangeNotifier {
     if (oldGame.isWishlist && newStatus != GameStatus.wishlist) {
       _userStats = _userStats.copyWith(wishlistConversions: _userStats.wishlistConversions + 1);
       await addXp(5.0, 'Got it! Wishlist -> Collection: ${oldGame.name}');
+      // Check if this newly acquired game breaks any collection records
+      if (newStatus == GameStatus.owned || newStatus == GameStatus.lended) {
+        await _checkPurchaseAchievements(oldGame);
+      }
     } else if (newStatus == GameStatus.sold) {
       _userStats = _userStats.copyWith(soldCount: _userStats.soldCount + 1);
       await addXp(3.0, 'Sold: ${oldGame.name}');
@@ -1040,5 +1287,103 @@ class GameRepository extends ChangeNotifier {
   /// Download leaderboard
   Future<List<LeaderboardEntry>> downloadLeaderboard() async {
     return await _syncService.downloadLeaderboard();
+  }
+
+  /// Get the simplest game (lowest weight) in owned collection
+  BoardGame? getSimplestGame() {
+    final ownedWithWeight = _ownedGames
+        .where((g) => (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+                      g.averageWeight != null && 
+                      g.averageWeight! > 0)
+        .toList();
+    
+    if (ownedWithWeight.isEmpty) return null;
+    
+    ownedWithWeight.sort((a, b) => a.averageWeight!.compareTo(b.averageWeight!));
+    return ownedWithWeight.first;
+  }
+
+  /// Get the hardest game (highest weight) in owned collection
+  BoardGame? getHardestGame() {
+    final ownedWithWeight = _ownedGames
+        .where((g) => (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+                      g.averageWeight != null && 
+                      g.averageWeight! > 0)
+        .toList();
+    
+    if (ownedWithWeight.isEmpty) return null;
+    
+    ownedWithWeight.sort((a, b) => b.averageWeight!.compareTo(a.averageWeight!));
+    return ownedWithWeight.first;
+  }
+
+  /// Get the lowest rated game in owned collection
+  BoardGame? getLowestRatedGame() {
+    final ownedWithRating = _ownedGames
+        .where((g) => (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+                      g.averageRating != null && 
+                      g.averageRating! > 0)
+        .toList();
+    
+    if (ownedWithRating.isEmpty) return null;
+    
+    ownedWithRating.sort((a, b) => a.averageRating!.compareTo(b.averageRating!));
+    return ownedWithRating.first;
+  }
+
+  /// Get the highest rated game in owned collection
+  BoardGame? getHighestRatedGame() {
+    final ownedWithRating = _ownedGames
+        .where((g) => (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+                      g.averageRating != null && 
+                      g.averageRating! > 0)
+        .toList();
+    
+    if (ownedWithRating.isEmpty) return null;
+    
+    ownedWithRating.sort((a, b) => b.averageRating!.compareTo(a.averageRating!));
+    return ownedWithRating.first;
+  }
+
+  /// Get a solo-only game from owned collection
+  BoardGame? getSoloOnlyGame() {
+    return _ownedGames.firstWhere(
+      (g) => (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+             g.minPlayers == 1 && 
+             g.maxPlayers == 1,
+      orElse: () => BoardGame(id: '', name: '', dateAdded: DateTime.now()),
+    ).id.isEmpty ? null : _ownedGames.firstWhere(
+      (g) => (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+             g.minPlayers == 1 && 
+             g.maxPlayers == 1,
+    );
+  }
+
+  /// Get a 2-player only game from owned collection
+  BoardGame? getDuoOnlyGame() {
+    return _ownedGames.firstWhere(
+      (g) => (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+             g.minPlayers == 2 && 
+             g.maxPlayers == 2,
+      orElse: () => BoardGame(id: '', name: '', dateAdded: DateTime.now()),
+    ).id.isEmpty ? null : _ownedGames.firstWhere(
+      (g) => (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+             g.minPlayers == 2 && 
+             g.maxPlayers == 2,
+    );
+  }
+
+  /// Get a party game (8+ players) from owned collection
+  BoardGame? getPartyGame() {
+    return _ownedGames.firstWhere(
+      (g) => (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+             g.maxPlayers != null && 
+             g.maxPlayers! >= 8,
+      orElse: () => BoardGame(id: '', name: '', dateAdded: DateTime.now()),
+    ).id.isEmpty ? null : _ownedGames.firstWhere(
+      (g) => (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+             g.maxPlayers != null && 
+             g.maxPlayers! >= 8,
+    );
   }
 }

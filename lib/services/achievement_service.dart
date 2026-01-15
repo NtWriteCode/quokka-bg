@@ -211,5 +211,137 @@ class AchievementService {
           xpReward: 40,
           category: 'The Expansionist',
         ),
+        
+        // Complexity achievements
+        Achievement(
+          id: 'complexity_simplest',
+          title: 'Gateway Gamer',
+          description: 'Play your simplest game (lowest weight)',
+          tier: AchievementTier.bronze,
+          xpReward: 20,
+          category: 'The Challenger',
+        ),
+        Achievement(
+          id: 'complexity_hardest',
+          title: 'Brain Burner',
+          description: 'Play your most complex game (highest weight)',
+          tier: AchievementTier.gold,
+          xpReward: 80,
+          category: 'The Challenger',
+        ),
+        
+        // Rating achievements
+        Achievement(
+          id: 'rating_lowest',
+          title: 'Hidden Gem Hunter',
+          description: 'Play your lowest rated game',
+          tier: AchievementTier.bronze,
+          xpReward: 20,
+          category: 'The Challenger',
+        ),
+        Achievement(
+          id: 'rating_highest',
+          title: 'Crowd Pleaser',
+          description: 'Play your highest rated game',
+          tier: AchievementTier.silver,
+          xpReward: 40,
+          category: 'The Challenger',
+        ),
+        
+        // Player count achievements
+        Achievement(
+          id: 'solo_player',
+          title: 'Lone Wolf',
+          description: 'Play a game solo',
+          tier: AchievementTier.bronze,
+          xpReward: 20,
+          category: 'The Social',
+        ),
+        Achievement(
+          id: 'max_players',
+          title: 'Party Host',
+          description: 'Play a game with its maximum player count (3+ players)',
+          tier: AchievementTier.silver,
+          xpReward: 40,
+          category: 'The Social',
+        ),
+        
+        // Purchase achievements
+        Achievement(
+          id: 'buy_new_game',
+          title: 'Retail Therapy',
+          description: 'Buy a brand new game',
+          tier: AchievementTier.bronze,
+          xpReward: 20,
+          category: 'The Collector',
+        ),
+        Achievement(
+          id: 'buy_used_game',
+          title: 'Thrift Shop Hero',
+          description: 'Buy a used game',
+          tier: AchievementTier.bronze,
+          xpReward: 20,
+          category: 'The Collector',
+        ),
+        
+        // Player count ownership achievements
+        Achievement(
+          id: 'own_solo_game',
+          title: 'Solo Adventurer',
+          description: 'Own a solo-only game (1 player)',
+          tier: AchievementTier.bronze,
+          xpReward: 20,
+          category: 'The Collector',
+        ),
+        Achievement(
+          id: 'own_duo_game',
+          title: 'Duelist',
+          description: 'Own a 2-player only game',
+          tier: AchievementTier.bronze,
+          xpReward: 20,
+          category: 'The Collector',
+        ),
+        Achievement(
+          id: 'own_party_game',
+          title: 'Party Starter',
+          description: 'Own a party game (8+ players)',
+          tier: AchievementTier.bronze,
+          xpReward: 20,
+          category: 'The Collector',
+        ),
+        
+        // Collection expansion achievements (20+ games required)
+        Achievement(
+          id: 'buy_new_best_rated',
+          title: 'Raising the Bar',
+          description: 'Buy a new highest-rated game (requires 20+ games)',
+          tier: AchievementTier.gold,
+          xpReward: 80,
+          category: 'The Collector',
+        ),
+        Achievement(
+          id: 'buy_new_worst_rated',
+          title: 'Guilty Pleasure',
+          description: 'Buy a new lowest-rated game (requires 20+ games)',
+          tier: AchievementTier.gold,
+          xpReward: 80,
+          category: 'The Collector',
+        ),
+        Achievement(
+          id: 'buy_new_most_complex',
+          title: 'Complexity Conqueror',
+          description: 'Buy a new most complex game (requires 20+ games)',
+          tier: AchievementTier.gold,
+          xpReward: 80,
+          category: 'The Collector',
+        ),
+        Achievement(
+          id: 'buy_new_least_complex',
+          title: 'Simplicity Seeker',
+          description: 'Buy a new least complex game (requires 20+ games)',
+          tier: AchievementTier.gold,
+          xpReward: 80,
+          category: 'The Collector',
+        ),
       ];
 }

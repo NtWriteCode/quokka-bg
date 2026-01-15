@@ -525,6 +525,93 @@ class _ProfilePageState extends State<ProfilePage> {
                 case AchievementTier.gold: tierColor = Colors.amber; break;
               }
 
+              // Get game info for game-specific achievements
+              String? gameHint;
+              if (ach.id == 'own_solo_game') {
+                final soloGame = widget.repository.getSoloOnlyGame();
+                if (soloGame != null) {
+                  gameHint = '${soloGame.name} (1 player)';
+                }
+              } else if (ach.id == 'own_duo_game') {
+                final duoGame = widget.repository.getDuoOnlyGame();
+                if (duoGame != null) {
+                  gameHint = '${duoGame.name} (2 players)';
+                }
+              } else if (ach.id == 'own_party_game') {
+                final partyGame = widget.repository.getPartyGame();
+                if (partyGame != null) {
+                  gameHint = '${partyGame.name} (${partyGame.minPlayers}-${partyGame.maxPlayers} players)';
+                }
+              } else if (ach.id == 'complexity_simplest') {
+                final simplest = widget.repository.getSimplestGame();
+                if (simplest != null) {
+                  gameHint = '${simplest.name} (Weight: ${simplest.averageWeight?.toStringAsFixed(2)})';
+                }
+              } else if (ach.id == 'complexity_hardest') {
+                final hardest = widget.repository.getHardestGame();
+                if (hardest != null) {
+                  gameHint = '${hardest.name} (Weight: ${hardest.averageWeight?.toStringAsFixed(2)})';
+                }
+              } else if (ach.id == 'rating_lowest') {
+                final lowest = widget.repository.getLowestRatedGame();
+                if (lowest != null) {
+                  gameHint = '${lowest.name} (Rating: ${lowest.averageRating?.toStringAsFixed(2)})';
+                }
+              } else if (ach.id == 'rating_highest') {
+                final highest = widget.repository.getHighestRatedGame();
+                if (highest != null) {
+                  gameHint = '${highest.name} (Rating: ${highest.averageRating?.toStringAsFixed(2)})';
+                }
+              } else if (ach.id == 'buy_new_best_rated') {
+                final highest = widget.repository.getHighestRatedGame();
+                if (highest != null && highest.averageRating != null) {
+                  final rating = highest.averageRating!;
+                  if (isUnlocked) {
+                    gameHint = 'Current best: ${rating.toStringAsFixed(2)} ✨';
+                  } else if (rating >= 9.0) {
+                    gameHint = 'Current best: ${rating.toStringAsFixed(2)} ⚡ (Eligible for auto-unlock!)';
+                  } else {
+                    gameHint = 'Current best: ${rating.toStringAsFixed(2)} (≥9.0 auto-unlocks)';
+                  }
+                }
+              } else if (ach.id == 'buy_new_worst_rated') {
+                final lowest = widget.repository.getLowestRatedGame();
+                if (lowest != null && lowest.averageRating != null) {
+                  final rating = lowest.averageRating!;
+                  if (isUnlocked) {
+                    gameHint = 'Current worst: ${rating.toStringAsFixed(2)} ✨';
+                  } else if (rating <= 2.0) {
+                    gameHint = 'Current worst: ${rating.toStringAsFixed(2)} ⚡ (Eligible for auto-unlock!)';
+                  } else {
+                    gameHint = 'Current worst: ${rating.toStringAsFixed(2)} (≤2.0 auto-unlocks)';
+                  }
+                }
+              } else if (ach.id == 'buy_new_most_complex') {
+                final hardest = widget.repository.getHardestGame();
+                if (hardest != null && hardest.averageWeight != null) {
+                  final weight = hardest.averageWeight!;
+                  if (isUnlocked) {
+                    gameHint = 'Current most: ${weight.toStringAsFixed(2)} ✨';
+                  } else if (weight >= 4.5) {
+                    gameHint = 'Current most: ${weight.toStringAsFixed(2)} ⚡ (Eligible for auto-unlock!)';
+                  } else {
+                    gameHint = 'Current most: ${weight.toStringAsFixed(2)} (≥4.5 auto-unlocks)';
+                  }
+                }
+              } else if (ach.id == 'buy_new_least_complex') {
+                final simplest = widget.repository.getSimplestGame();
+                if (simplest != null && simplest.averageWeight != null) {
+                  final weight = simplest.averageWeight!;
+                  if (isUnlocked) {
+                    gameHint = 'Current least: ${weight.toStringAsFixed(2)} ✨';
+                  } else if (weight <= 1.2) {
+                    gameHint = 'Current least: ${weight.toStringAsFixed(2)} ⚡ (Eligible for auto-unlock!)';
+                  } else {
+                    gameHint = 'Current least: ${weight.toStringAsFixed(2)} (≤1.2 auto-unlocks)';
+                  }
+                }
+              }
+
               return Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 elevation: isUnlocked ? 2 : 0,
@@ -546,7 +633,23 @@ class _ProfilePageState extends State<ProfilePage> {
                         color: isUnlocked ? null : Colors.grey[700],
                       ),
                     ),
-                    subtitle: Text(ach.description),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(ach.description),
+                        if (gameHint != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '🎯 $gameHint',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isUnlocked ? Colors.green : Colors.blue,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                     trailing: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
