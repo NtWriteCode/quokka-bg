@@ -364,6 +364,7 @@ class _ProfilePageState extends State<ProfilePage> {
       speed: effects.pulseSpeed,
       child: GestureDetector(
         onTap: () => _showCustomizationDialog(stats),
+        behavior: HitTestBehavior.deferToChild,
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Container(
