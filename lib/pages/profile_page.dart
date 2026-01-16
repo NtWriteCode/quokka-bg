@@ -1550,7 +1550,7 @@ class _CustomizationDialogState extends State<_CustomizationDialog> with SingleT
       children: [
         SwitchListTile(
           title: const Text('Pulsing Effect'),
-          subtitle: unlocked ? const Text('Gentle breathing animation') : const Text('Unlocks at Level 40', style: TextStyle(color: Colors.grey)),
+          subtitle: unlocked ? const Text('Gentle breathing animation') : const Text('Unlocks at Level 25', style: TextStyle(color: Colors.grey)),
           value: _profileEffects.pulseEnabled,
           onChanged: unlocked ? (val) {
             setState(() {
@@ -1591,9 +1591,10 @@ class _CustomizationDialogState extends State<_CustomizationDialog> with SingleT
     int requiredLevel = 0;
     
     switch (effectId) {
-      case 'shimmer': requiredLevel = 20; break;
-      case 'animatedGradient': requiredLevel = 30; break;
-      case 'glow': requiredLevel = 35; break;
+      case 'shimmer': requiredLevel = 10; break;
+      case 'animatedGradient': requiredLevel = 15; break;
+      case 'glow': requiredLevel = 20; break;
+      case 'pulse': requiredLevel = 25; break;
     }
     
     return SwitchListTile(
@@ -1699,7 +1700,7 @@ class _CustomizationDialogState extends State<_CustomizationDialog> with SingleT
     
     return SwitchListTile(
       title: const Text('Particles'),
-      subtitle: unlocked ? null : const Text('Unlocks at Level 50', style: TextStyle(color: Colors.grey)),
+      subtitle: unlocked ? null : const Text('Unlocks at Level 30', style: TextStyle(color: Colors.grey)),
       value: _profileEffects.particlesEnabled,
       onChanged: unlocked ? (val) {
         setState(() {
