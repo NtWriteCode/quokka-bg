@@ -11,7 +11,6 @@ import 'package:quokka/models/user_stats.dart';
 import 'package:quokka/models/leaderboard_entry.dart';
 import 'package:quokka/services/sync_service.dart';
 import 'package:quokka/services/achievement_service.dart';
-import 'package:quokka/helpers/title_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -46,6 +45,12 @@ class GameRepository extends ChangeNotifier {
   }
 
   UserStats get userStats => _userStats;
+  
+  /// Get all unlocked achievements with their details
+  List<Achievement> getUnlockedAchievements() {
+    final all = AchievementService.allAchievements;
+    return all.where((a) => _userStats.unlockedAchievementIds.contains(a.id)).toList();
+  }
   
   Future<void> addXp(double amount, String reason, {bool applyStreakBonus = false}) async {
     // Apply streak bonus if requested
@@ -88,14 +93,9 @@ class GameRepository extends ChangeNotifier {
     _levelUpController.add({
       'oldLevel': oldLevel,
       'newLevel': newLevel,
-      'newTitle': _getTitleForLevel(newLevel),
       'newBackgroundTier': (newLevel / 5).floor(),
       'xpForNext': UserStats.getXpRequiredForLevel(newLevel + 1),
     });
-  }
-  
-  String _getTitleForLevel(int level) {
-    return TitleHelper.getTitleForLevel(level);
   }
   
   /// Check and award daily login bonus
@@ -1325,10 +1325,23 @@ class GameRepository extends ChangeNotifier {
     // Calculate longest streak (from play history)
     int longestStreak = _calculateLongestStreak();
 
+    // Get achievement title name if one is selected
+    String? achievementTitleName;
+    if (_userStats.selectedAchievementTitleId != null) {
+      final achievement = getUnlockedAchievements()
+          .firstWhere((a) => a.id == _userStats.selectedAchievementTitleId, 
+                      orElse: () => Achievement(id: '', title: '', description: '', 
+                                               tier: AchievementTier.bronze, xpReward: 0, category: ''));
+      if (achievement.id.isNotEmpty) {
+        achievementTitleName = achievement.title;
+      }
+    }
+    
     final entry = LeaderboardEntry(
       userId: _userStats.userId,
       displayName: _userStats.displayName,
-      customTitle: _userStats.customTitle,
+      achievementTitleId: _userStats.selectedAchievementTitleId,
+      achievementTitleName: achievementTitleName,
       customBackgroundTier: _userStats.customBackgroundTier,
       lastUpdated: DateTime.now(),
       stats: LeaderboardStats(

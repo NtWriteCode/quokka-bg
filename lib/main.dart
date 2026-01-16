@@ -88,7 +88,6 @@ class _RootPageState extends State<RootPage> {
       barrierDismissible: false,
       builder: (context) => LevelUpDialog(
         newLevel: data['newLevel'],
-        newTitle: data['newTitle'],
         newBackgroundTier: data['newBackgroundTier'],
         xpForNext: data['xpForNext'],
       ),

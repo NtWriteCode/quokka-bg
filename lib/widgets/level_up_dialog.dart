@@ -4,14 +4,12 @@ import 'dart:math';
 
 class LevelUpDialog extends StatefulWidget {
   final int newLevel;
-  final String newTitle;
   final int? newBackgroundTier;
   final int xpForNext;
 
   const LevelUpDialog({
     super.key,
     required this.newLevel,
-    required this.newTitle,
     this.newBackgroundTier,
     required this.xpForNext,
   });
@@ -94,27 +92,13 @@ class _LevelUpDialogState extends State<LevelUpDialog> {
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Column(
-                  children: [
-                    Text(
-                      'Level ${widget.newLevel}',
-                      style: const TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      widget.newTitle,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                child: Text(
+                  'Level ${widget.newLevel}',
+                  style: const TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.deepPurple,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),

@@ -285,7 +285,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
   }) {
     final tier = entry.customBackgroundTier ?? (entry.stats.level / 5).floor();
     final gradient = TitleHelper.getBackgroundForLevel(tier * 5);
-    final title = entry.customTitle ?? TitleHelper.getTitleForLevel(entry.stats.level);
+    final title = entry.achievementTitleName; // Can be null if no achievement title selected
     final statValue = _getStatValue(entry);
 
     // Rank medal
@@ -374,15 +374,17 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                             ],
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          title,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white.withOpacity(0.9),
-                            fontStyle: FontStyle.italic,
+                        if (title != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            title,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white.withOpacity(0.9),
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
-                        ),
+                        ],
                         if (topCategories.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Wrap(
@@ -451,7 +453,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
   ) {
     final tier = entry.customBackgroundTier ?? (entry.stats.level / 5).floor();
     final gradient = TitleHelper.getBackgroundForLevel(tier * 5);
-    final title = entry.customTitle ?? TitleHelper.getTitleForLevel(entry.stats.level);
+    final title = entry.achievementTitleName; // Can be null if no achievement title selected
     final backgroundTierName = TitleHelper.getTierNameForLevel(tier * 5);
 
     // Rank display
@@ -495,15 +497,17 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  title,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontStyle: FontStyle.italic,
-                                    color: Colors.white.withOpacity(0.9),
+                                if (title != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    title,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontStyle: FontStyle.italic,
+                                      color: Colors.white.withOpacity(0.9),
+                                    ),
                                   ),
-                                ),
+                                ],
                               ],
                             ),
                           ),

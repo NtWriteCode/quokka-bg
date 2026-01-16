@@ -1,68 +1,6 @@
 import 'package:flutter/material.dart';
 
 class TitleHelper {
-  static String getTitleForLevel(int level) {
-    if (level >= 100) return 'Eternal Gamekeeper';
-    if (level >= 98) return 'Board Game Oracle';
-    if (level >= 96) return 'Keeper of the Sacred Shelf';
-    if (level >= 94) return 'Tabletop Titan';
-    if (level >= 92) return 'Game Night Legend';
-    if (level >= 90) return 'Legendary Collector';
-    if (level >= 88) return 'Table Commander';
-    if (level >= 86) return 'Shelf Space Optimizer';
-    if (level >= 84) return 'Cardboard Emperor';
-    if (level >= 82) return 'Victory Point Overlord';
-    if (level >= 80) return 'Board Game Sage';
-    if (level >= 78) return 'Game Master';
-    if (level >= 76) return 'Dice Tower';
-    if (level >= 74) return 'Meeple Whisperer';
-    if (level >= 72) return 'Cardboard Connoisseur';
-    if (level >= 70) return 'Collection Curator';
-    if (level >= 68) return 'Tabletop Tactician';
-    if (level >= 66) return 'Strategy Sage';
-    if (level >= 64) return 'Mechanic Scholar';
-    if (level >= 62) return 'Theme Immersionist';
-    if (level >= 60) return 'Game Night Veteran';
-    if (level >= 58) return 'Sleeve Protector';
-    if (level >= 56) return 'Insert Organizer';
-    if (level >= 54) return 'Promo Hunter';
-    if (level >= 52) return 'Expansion Enthusiast';
-    if (level >= 50) return 'Shelf of Opportunity Curator';
-    if (level >= 48) return 'Combo Mastermind';
-    if (level >= 46) return 'Victory Point Engine';
-    if (level >= 44) return 'Quarterbacking Coach';
-    if (level >= 42) return 'Kingmaker';
-    if (level >= 40) return 'Alpha Gamer';
-    if (level >= 38) return 'AP Minimizer';
-    if (level >= 36) return 'Table Hog';
-    if (level >= 34) return 'Analysis Paralysis Survivor';
-    if (level >= 32) return 'Rules Lawyer';
-    if (level >= 30) return 'Kickstarter Backer';
-    if (level >= 28) return 'Shelf Organizer';
-    if (level >= 26) return 'Game Night Host';
-    if (level >= 24) return 'Engine Starter';
-    if (level >= 22) return 'Combo Builder';
-    if (level >= 20) return 'Strategy Planner';
-    if (level >= 18) return 'Board Explorer';
-    if (level >= 16) return 'Resource Manager';
-    if (level >= 14) return 'Turn Taker';
-    if (level >= 12) return 'Victory Point Seeker';
-    if (level >= 10) return 'Rules Reader';
-    if (level >= 8) return 'Token Counter';
-    if (level >= 6) return 'Card Shuffler';
-    if (level >= 4) return 'Meeple Collector';
-    if (level >= 2) return 'Dice Roller';
-    return 'First Player';
-  }
-
-  static List<String> getUnlockedTitles(int level) {
-    final titles = <String>[];
-    for (int i = 1; i <= level; i += 2) {
-      titles.add(getTitleForLevel(i));
-    }
-    return titles.toSet().toList(); // Remove duplicates
-  }
-
   static LinearGradient getBackgroundForLevel(int level) {
     final tier = (level / 5).floor();
     return _getGradientForTier(tier);

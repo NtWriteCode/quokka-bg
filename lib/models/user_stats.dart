@@ -80,7 +80,7 @@ class UserStats {
   final double streakBonus; // Current streak bonus percentage (0.0 to 1.0 = 0% to 100%)
   
   // Customization
-  final String? customTitle; // null means use level-based title
+  final String? selectedAchievementTitleId; // Achievement ID to use as title, null means no custom title
   final int? customBackgroundTier; // null means use level-based background
   
   // Leaderboard
@@ -101,7 +101,7 @@ class UserStats {
     this.lastPlayDate,
     this.consecutiveDays = 0,
     this.streakBonus = 0.0,
-    this.customTitle,
+    this.selectedAchievementTitleId,
     this.customBackgroundTier,
     String? userId,
     String? displayName,
@@ -156,7 +156,7 @@ class UserStats {
     Object? lastPlayDate = _notProvided,
     int? consecutiveDays,
     double? streakBonus,
-    Object? customTitle = _notProvided,
+    Object? selectedAchievementTitleId = _notProvided,
     Object? customBackgroundTier = _notProvided,
     String? userId,
     String? displayName,
@@ -175,7 +175,7 @@ class UserStats {
       lastPlayDate: lastPlayDate == _notProvided ? this.lastPlayDate : lastPlayDate as DateTime?,
       consecutiveDays: consecutiveDays ?? this.consecutiveDays,
       streakBonus: streakBonus ?? this.streakBonus,
-      customTitle: customTitle == _notProvided ? this.customTitle : customTitle as String?,
+      selectedAchievementTitleId: selectedAchievementTitleId == _notProvided ? this.selectedAchievementTitleId : selectedAchievementTitleId as String?,
       customBackgroundTier: customBackgroundTier == _notProvided ? this.customBackgroundTier : customBackgroundTier as int?,
       userId: userId ?? this.userId,
       displayName: displayName ?? this.displayName,
@@ -198,7 +198,7 @@ class UserStats {
         'lastPlayDate': lastPlayDate?.toIso8601String(),
         'consecutiveDays': consecutiveDays,
         'streakBonus': streakBonus,
-        'customTitle': customTitle,
+        'selectedAchievementTitleId': selectedAchievementTitleId,
         'customBackgroundTier': customBackgroundTier,
         'userId': userId,
         'displayName': displayName,
@@ -218,7 +218,7 @@ class UserStats {
         streakBonus: (json['streakBonus'] is int) ? (json['streakBonus'] as int).toDouble() : (json['streakBonus'] ?? 0.0),
         totalPlays: json['totalPlays'] ?? 0,
         totalWins: json['totalWins'] ?? 0,
-        customTitle: json['customTitle'],
+        selectedAchievementTitleId: json['selectedAchievementTitleId'],
         customBackgroundTier: json['customBackgroundTier'],
         userId: json['userId'],
         displayName: json['displayName'],

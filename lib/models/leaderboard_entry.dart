@@ -1,7 +1,8 @@
 class LeaderboardEntry {
   final String userId;
   final String displayName;
-  final String? customTitle;
+  final String? achievementTitleId; // Achievement ID to use as title
+  final String? achievementTitleName; // Achievement title text (for display without lookup)
   final int? customBackgroundTier;
   final DateTime lastUpdated;
   final LeaderboardStats stats;
@@ -9,7 +10,8 @@ class LeaderboardEntry {
   LeaderboardEntry({
     required this.userId,
     required this.displayName,
-    this.customTitle,
+    this.achievementTitleId,
+    this.achievementTitleName,
     this.customBackgroundTier,
     required this.lastUpdated,
     required this.stats,
@@ -18,7 +20,8 @@ class LeaderboardEntry {
   Map<String, dynamic> toJson() => {
         'userId': userId,
         'displayName': displayName,
-        'customTitle': customTitle,
+        'achievementTitleId': achievementTitleId,
+        'achievementTitleName': achievementTitleName,
         'customBackgroundTier': customBackgroundTier,
         'lastUpdated': lastUpdated.toIso8601String(),
         'stats': stats.toJson(),
@@ -28,7 +31,8 @@ class LeaderboardEntry {
       LeaderboardEntry(
         userId: json['userId'] ?? '',
         displayName: json['displayName'] ?? 'Unknown Player',
-        customTitle: json['customTitle'],
+        achievementTitleId: json['achievementTitleId'],
+        achievementTitleName: json['achievementTitleName'],
         customBackgroundTier: json['customBackgroundTier'],
         lastUpdated: json['lastUpdated'] != null
             ? DateTime.parse(json['lastUpdated'])

@@ -276,7 +276,18 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildLevelHeader(UserStats stats, double progress) {
-    final title = stats.customTitle ?? TitleHelper.getTitleForLevel(stats.level);
+    // Get title from selected achievement, or use display name
+    String? title;
+    if (stats.selectedAchievementTitleId != null) {
+      final achievement = widget.repository.getUnlockedAchievements()
+          .firstWhere((a) => a.id == stats.selectedAchievementTitleId, 
+                      orElse: () => Achievement(id: '', title: '', description: '', 
+                                               tier: AchievementTier.bronze, xpReward: 0, category: ''));
+      if (achievement.id.isNotEmpty) {
+        title = achievement.title;
+      }
+    }
+    
     final gradient = stats.customBackgroundTier != null 
         ? TitleHelper.getBackgroundForLevel(stats.customBackgroundTier! * 5)
         : TitleHelper.getBackgroundForLevel(stats.level);
@@ -344,16 +355,17 @@ class _ProfilePageState extends State<ProfilePage> {
                               style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            shadows: [Shadow(blurRadius: 2, color: Colors.black45)],
+                        if (title != null)
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              shadows: [Shadow(blurRadius: 2, color: Colors.black45)],
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
                       ],
                     ),
                 const SizedBox(height: 16),
@@ -889,14 +901,14 @@ class _CustomizationDialog extends StatefulWidget {
 
 class _CustomizationDialogState extends State<_CustomizationDialog> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  String? _selectedTitle;
+  String? _selectedAchievementTitleId;
   int? _selectedBackgroundTier;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _selectedTitle = widget.stats.customTitle;
+    _selectedAchievementTitleId = widget.stats.selectedAchievementTitleId;
     _selectedBackgroundTier = widget.stats.customBackgroundTier;
   }
 
@@ -908,7 +920,7 @@ class _CustomizationDialogState extends State<_CustomizationDialog> with SingleT
 
   void _saveCustomization() async {
     final updatedStats = widget.stats.copyWith(
-      customTitle: _selectedTitle,
+      selectedAchievementTitleId: _selectedAchievementTitleId,
       customBackgroundTier: _selectedBackgroundTier,
     );
     
@@ -922,8 +934,7 @@ class _CustomizationDialogState extends State<_CustomizationDialog> with SingleT
 
   @override
   Widget build(BuildContext context) {
-    final unlockedTitles = TitleHelper.getUnlockedTitles(widget.stats.level);
-    final currentTitle = TitleHelper.getTitleForLevel(widget.stats.level);
+    final unlockedAchievements = widget.repository.getUnlockedAchievements();
     final unlockedBackgrounds = TitleHelper.getUnlockedBackgrounds(widget.stats.level);
     final maxTier = (widget.stats.level / 5).floor();
 
@@ -965,7 +976,7 @@ class _CustomizationDialogState extends State<_CustomizationDialog> with SingleT
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildTitleSelection(unlockedTitles, currentTitle),
+                  _buildTitleSelection(unlockedAchievements),
                   _buildBackgroundSelection(unlockedBackgrounds, maxTier),
                 ],
               ),
@@ -978,7 +989,7 @@ class _CustomizationDialogState extends State<_CustomizationDialog> with SingleT
                   TextButton(
                     onPressed: () {
                       setState(() {
-                        _selectedTitle = null;
+                        _selectedAchievementTitleId = null;
                         _selectedBackgroundTier = null;
                       });
                     },
@@ -997,40 +1008,94 @@ class _CustomizationDialogState extends State<_CustomizationDialog> with SingleT
     );
   }
 
-  Widget _buildTitleSelection(List<String> unlockedTitles, String currentTitle) {
-    // Determine if user wants default (null) or explicitly selected current title
-    final isUsingDefault = _selectedTitle == null;
+  Widget _buildTitleSelection(List<Achievement> unlockedAchievements) {
+    // Determine if user wants default (null) or explicitly selected achievement title
+    final isUsingDefault = _selectedAchievementTitleId == null;
+    
+    // Group achievements by category
+    final achievementsByCategory = <String, List<Achievement>>{};
+    for (final achievement in unlockedAchievements) {
+      achievementsByCategory.putIfAbsent(achievement.category, () => []).add(achievement);
+    }
     
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Auto (use current level title)
+        // No custom title (show display name only)
         Card(
           color: isUsingDefault ? Colors.green.shade50 : null,
           child: RadioListTile<String?>(
-            title: Text(currentTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: const Text('Auto (current level title)'),
+            title: Text(widget.stats.displayName.isEmpty ? 'Player' : widget.stats.displayName, 
+                       style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: const Text('No title (default)'),
             value: null,
-            groupValue: _selectedTitle,
-            onChanged: (val) => setState(() => _selectedTitle = val),
+            groupValue: _selectedAchievementTitleId,
+            onChanged: (val) => setState(() => _selectedAchievementTitleId = val),
           ),
         ),
         const SizedBox(height: 16),
-        const Text('Unlocked Titles:', style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        ...unlockedTitles.reversed.map((title) {
-          final isSelected = _selectedTitle == title;
-          return Card(
-            color: isSelected ? Colors.blue.shade50 : null,
-            child: RadioListTile<String?>(
-              title: Text(title),
-              subtitle: title == currentTitle ? const Text('Current level') : null,
-              value: title,
-              groupValue: _selectedTitle,
-              onChanged: (val) => setState(() => _selectedTitle = val),
+        if (unlockedAchievements.isEmpty)
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Unlock achievements to use them as titles!',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontStyle: FontStyle.italic),
+              ),
             ),
-          );
-        }),
+          )
+        else
+          ...achievementsByCategory.entries.map((entry) {
+            final category = entry.key;
+            final achievements = entry.value;
+            
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text(
+                    category,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ),
+                ...achievements.map((achievement) {
+                  final isSelected = _selectedAchievementTitleId == achievement.id;
+                  Color? tierColor;
+                  switch (achievement.tier) {
+                    case AchievementTier.bronze:
+                      tierColor = Colors.brown.shade300;
+                      break;
+                    case AchievementTier.silver:
+                      tierColor = Colors.grey.shade400;
+                      break;
+                    case AchievementTier.gold:
+                      tierColor = Colors.amber.shade400;
+                      break;
+                  }
+                  
+                  return Card(
+                    color: isSelected ? Colors.blue.shade50 : null,
+                    child: RadioListTile<String?>(
+                      title: Row(
+                        children: [
+                          Icon(Icons.emoji_events, color: tierColor, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(achievement.title)),
+                        ],
+                      ),
+                      subtitle: Text(achievement.description),
+                      value: achievement.id,
+                      groupValue: _selectedAchievementTitleId,
+                      onChanged: (val) => setState(() => _selectedAchievementTitleId = val),
+                    ),
+                  );
+                }),
+                const SizedBox(height: 8),
+              ],
+            );
+          }),
       ],
     );
   }
