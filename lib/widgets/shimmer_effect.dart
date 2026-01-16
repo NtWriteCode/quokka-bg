@@ -98,7 +98,7 @@ class _ShimmerPainter extends CustomPainter {
 class _GradientTranslate extends GradientTransform {
   final double progress;
 
-  _GradientTranslate(this.progress);
+  const _GradientTranslate(this.progress);
 
   @override
   Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {
