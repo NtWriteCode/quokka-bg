@@ -114,25 +114,9 @@ class AchievementService {
         Achievement(
           id: 'win_1',
           title: 'First Blood',
-          description: 'Win a game',
+          description: 'Record a game with a winner',
           tier: AchievementTier.bronze,
           xpReward: 20,
-          category: 'The Competitor',
-        ),
-        Achievement(
-          id: 'win_10',
-          title: 'Champion',
-          description: 'Win 10 games',
-          tier: AchievementTier.silver,
-          xpReward: 40,
-          category: 'The Competitor',
-        ),
-        Achievement(
-          id: 'win_50',
-          title: 'Unstoppable',
-          description: 'Win 50 games',
-          tier: AchievementTier.gold,
-          xpReward: 80,
           category: 'The Competitor',
         ),
         Achievement(
@@ -178,7 +162,7 @@ class AchievementService {
         Achievement(
           id: 'winning_streak_3',
           title: 'On Fire',
-          description: 'Win 3 games in a row',
+          description: 'Witness a player win 3 games in a row',
           tier: AchievementTier.silver,
           xpReward: 40,
           category: 'The Competitor',
@@ -186,7 +170,7 @@ class AchievementService {
         Achievement(
           id: 'close_call',
           title: 'Nail Biter',
-          description: 'Win by exactly 1 point',
+          description: 'Witness a game decided by exactly 1 point',
           tier: AchievementTier.bronze,
           xpReward: 20,
           category: 'The Competitor',
@@ -439,14 +423,6 @@ class AchievementService {
           description: 'Own a game published in 1990 or earlier',
           tier: AchievementTier.gold,
           xpReward: 80,
-          category: 'The Collector',
-        ),
-        Achievement(
-          id: 'high_roller',
-          title: 'High Roller',
-          description: 'Own a game worth \$100+',
-          tier: AchievementTier.silver,
-          xpReward: 40,
           category: 'The Collector',
         ),
         Achievement(

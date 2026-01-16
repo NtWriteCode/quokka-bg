@@ -390,14 +390,6 @@ class GameRepository extends ChangeNotifier {
           );
           break;
         }
-        case 'high_roller': {
-          shouldUnlock = _ownedGames.any((g) => 
-            (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
-            g.price != null && 
-            g.price! >= 100
-          );
-          break;
-        }
         case 'complete_set': {
           shouldUnlock = _checkCompleteSet();
           break;
