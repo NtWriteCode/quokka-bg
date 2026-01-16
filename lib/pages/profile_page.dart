@@ -25,6 +25,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   bool _showAllXpHistory = false;
+  final GlobalKey _infoButtonKey = GlobalKey();
 
   @override
   void initState() {
@@ -40,6 +41,15 @@ class _ProfilePageState extends State<ProfilePage> {
   void dispose() {
     widget.repository.removeListener(_onRepositoryChanged);
     super.dispose();
+  }
+
+  bool _isTapInside(GlobalKey key, Offset globalPosition) {
+    final context = key.currentContext;
+    if (context == null) return false;
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox) return false;
+    final rect = renderObject.localToGlobal(Offset.zero) & renderObject.size;
+    return rect.contains(globalPosition);
   }
 
   void _showCustomizationDialog(UserStats stats) async {
@@ -363,8 +373,14 @@ class _ProfilePageState extends State<ProfilePage> {
       enabled: effects.pulseEnabled,
       speed: effects.pulseSpeed,
       child: GestureDetector(
-        onTap: () => _showCustomizationDialog(stats),
-        behavior: HitTestBehavior.deferToChild,
+        onTapUp: (details) {
+          if (_isTapInside(_infoButtonKey, details.globalPosition)) {
+            _showXpInfoDialog();
+            return;
+          }
+          _showCustomizationDialog(stats);
+        },
+        behavior: HitTestBehavior.opaque,
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Container(
@@ -393,19 +409,17 @@ class _ProfilePageState extends State<ProfilePage> {
               Positioned(
                 top: 12,
                 left: 12,
-                child: GestureDetector(
-                  onTap: _showXpInfoDialog,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.info_outline,
-                      size: 18,
-                      color: Colors.white,
-                    ),
+                child: Container(
+                  key: _infoButtonKey,
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.info_outline,
+                    size: 18,
+                    color: Colors.white,
                   ),
                 ),
               ),

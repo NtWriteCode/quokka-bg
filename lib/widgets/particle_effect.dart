@@ -83,18 +83,21 @@ class _ParticleEffectState extends State<ParticleEffect> with SingleTickerProvid
       children: [
         widget.child,
         Positioned.fill(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              return CustomPaint(
-                painter: _ParticlePainter(
-                  particles: _particles,
-                  progress: _controller.value,
-                  particleType: widget.particleType,
-                  color: widget.color ?? Colors.white,
-                ),
-              );
-            },
+          child: IgnorePointer(
+            ignoring: true,
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                return CustomPaint(
+                  painter: _ParticlePainter(
+                    particles: _particles,
+                    progress: _controller.value,
+                    particleType: widget.particleType,
+                    color: widget.color ?? Colors.white,
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ],
