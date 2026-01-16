@@ -43,6 +43,7 @@ class RootPage extends StatefulWidget {
 class _RootPageState extends State<RootPage> {
   int _selectedIndex = 0;
   late GameRepository _repository;
+  bool _showLeaderboard = true;
 
   @override
   void initState() {
@@ -52,6 +53,9 @@ class _RootPageState extends State<RootPage> {
       // Check daily login bonus after loading
       _repository.checkDailyLoginBonus();
     });
+    
+    // Check leaderboard availability
+    _checkLeaderboardAvailability();
     
     _repository.onAchievementsUnlocked.listen((achievements) {
       if (mounted) {
@@ -93,6 +97,16 @@ class _RootPageState extends State<RootPage> {
       ),
     );
   }
+  
+  Future<void> _checkLeaderboardAvailability() async {
+    final isAvailable = await _repository.isLeaderboardEnabled();
+    if (mounted) {
+      setState(() {
+        _showLeaderboard = isAvailable;
+      });
+    }
+  }
+  
   @override
   Widget build(BuildContext context) {
     final List<Widget> pages = [
@@ -105,6 +119,7 @@ class _RootPageState extends State<RootPage> {
 
     return MainScaffold(
       selectedIndex: _selectedIndex,
+      showLeaderboard: _showLeaderboard,
       onDestinationSelected: (index) {
         setState(() {
           _selectedIndex = index;

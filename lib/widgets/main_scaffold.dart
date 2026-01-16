@@ -4,12 +4,14 @@ class MainScaffold extends StatefulWidget {
   final Widget child;
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
+  final bool showLeaderboard;
 
   const MainScaffold({
     super.key,
     required this.child,
     required this.selectedIndex,
     required this.onDestinationSelected,
+    this.showLeaderboard = true,
   });
 
   @override
@@ -36,7 +38,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     NavigationDestination(
       icon: Icon(Icons.leaderboard_outlined),
       selectedIcon: Icon(Icons.leaderboard),
-      label: 'Leaderboard',
+      label: 'Ranking',
     ),
     NavigationDestination(
       icon: Icon(Icons.person_outline),
@@ -64,7 +66,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     NavigationRailDestination(
       icon: Icon(Icons.leaderboard_outlined),
       selectedIcon: Icon(Icons.leaderboard),
-      label: Text('Leaderboard'),
+      label: Text('Ranking'),
     ),
     NavigationRailDestination(
       icon: Icon(Icons.person_outline),
@@ -75,6 +77,15 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    // Filter destinations based on leaderboard availability
+    final destinations = widget.showLeaderboard 
+        ? _destinations 
+        : _destinations.where((d) => d.label != 'Ranking').toList();
+    
+    final railDestinations = widget.showLeaderboard 
+        ? _railDestinations 
+        : _railDestinations.where((d) => (d.label as Text).data != 'Ranking').toList();
+    
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 600) {
@@ -82,7 +93,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           return Scaffold(
             body: widget.child,
             bottomNavigationBar: NavigationBar(
-              destinations: _destinations,
+              destinations: destinations,
               selectedIndex: widget.selectedIndex,
               onDestinationSelected: widget.onDestinationSelected,
             ),
@@ -93,7 +104,7 @@ class _MainScaffoldState extends State<MainScaffold> {
             body: Row(
               children: [
                 NavigationRail(
-                  destinations: _railDestinations,
+                  destinations: railDestinations,
                   selectedIndex: widget.selectedIndex,
                   onDestinationSelected: widget.onDestinationSelected,
                   labelType: NavigationRailLabelType.all,
