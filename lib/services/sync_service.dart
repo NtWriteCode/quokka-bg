@@ -104,7 +104,7 @@ class SyncService {
       } catch (e) {
         // Folder likely exists, ignore
       }
-
+      
       // Check metadata
       int remoteVersion = 0;
       try {

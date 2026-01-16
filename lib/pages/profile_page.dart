@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:quokka/repositories/game_repository.dart';
 import 'package:quokka/models/user_stats.dart';
+import 'package:quokka/models/profile_effects.dart';
 import 'package:quokka/services/achievement_service.dart';
 import 'package:quokka/pages/settings_page.dart';
 import 'package:quokka/models/player.dart';
 import 'package:quokka/helpers/title_helper.dart';
 import 'package:quokka/widgets/gradient_background.dart';
+import 'package:quokka/widgets/animated_gradient_background.dart';
+import 'package:quokka/widgets/pattern_overlay.dart';
+import 'package:quokka/widgets/shimmer_effect.dart';
+import 'package:quokka/widgets/particle_effect.dart';
+import 'package:quokka/widgets/pulse_effect.dart';
+import 'package:quokka/widgets/level_badge.dart';
 import 'dart:math';
 
 class ProfilePage extends StatefulWidget {
@@ -292,17 +299,94 @@ class _ProfilePageState extends State<ProfilePage> {
         ? TitleHelper.getBackgroundForLevel(stats.customBackgroundTier! * 5)
         : TitleHelper.getBackgroundForLevel(stats.level);
     final tier = stats.customBackgroundTier ?? (stats.level / 5).floor();
+    final effects = stats.profileEffects;
     
-    return GestureDetector(
-      onTap: () => _showCustomizationDialog(stats),
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: GradientBackground(
-          gradient: gradient,
-          tier: tier,
-          borderRadius: BorderRadius.circular(16),
-          child: Stack(
+    // Build border decoration with effects
+    final borderShadows = <BoxShadow>[];
+    
+    // Add glow effect if enabled (clamp opacity to 0.0-1.0)
+    if (effects.glowEnabled) {
+      borderShadows.addAll([
+        BoxShadow(
+          color: Colors.white.withOpacity((0.5 * effects.glowIntensity).clamp(0.0, 1.0)),
+          blurRadius: 30 * effects.glowIntensity,
+          spreadRadius: 8 * effects.glowIntensity,
+        ),
+        BoxShadow(
+          color: Colors.white.withOpacity((0.3 * effects.glowIntensity).clamp(0.0, 1.0)),
+          blurRadius: 50 * effects.glowIntensity,
+          spreadRadius: 15 * effects.glowIntensity,
+        ),
+      ]);
+    }
+    
+    final borderDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(16),
+      border: effects.glowEnabled 
+          ? Border.all(
+              color: Colors.white.withOpacity((0.7 * effects.glowIntensity).clamp(0.0, 1.0)),
+              width: 3 * effects.glowIntensity,
+            )
+          : null,
+      boxShadow: borderShadows.isNotEmpty ? borderShadows : null,
+    );
+    
+    // Use a golden/yellow glow that's visible on any background
+    // Use custom glow color or default to amber
+    final glowColor = effects.glowColor ?? Colors.amber;
+    
+    final finalDecoration = effects.glowEnabled 
+        ? BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            // No border - just pure glow effect
+            boxShadow: [
+              BoxShadow(
+                color: glowColor.withOpacity((0.6 * effects.glowIntensity).clamp(0.0, 1.0)),
+                blurRadius: 20 * effects.glowIntensity,
+                spreadRadius: 5 * effects.glowIntensity,
+              ),
+              BoxShadow(
+                color: glowColor.withOpacity((0.4 * effects.glowIntensity).clamp(0.0, 1.0)),
+                blurRadius: 40 * effects.glowIntensity,
+                spreadRadius: 10 * effects.glowIntensity,
+              ),
+              BoxShadow(
+                color: glowColor.withOpacity((0.3 * effects.glowIntensity).clamp(0.0, 1.0)),
+                blurRadius: 60 * effects.glowIntensity,
+                spreadRadius: 15 * effects.glowIntensity,
+              ),
+            ],
+          )
+        : borderDecoration;
+    
+    return PulseEffect(
+      enabled: effects.pulseEnabled,
+      speed: effects.pulseSpeed,
+      child: GestureDetector(
+        onTap: () => _showCustomizationDialog(stats),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Container(
+            decoration: finalDecoration,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: ParticleEffect(
+                  enabled: effects.particlesEnabled,
+                  particleType: effects.particleType ?? 'stars',
+                  density: effects.particleDensity,
+                  color: effects.particleColor,
+                  child: ShimmerEffect(
+                    enabled: effects.shimmerEnabled,
+                    child: PatternOverlay(
+                      pattern: effects.selectedPattern,
+                      child: AnimatedGradientBackground(
+                        gradient: gradient,
+                        enabled: effects.animatedGradientEnabled,
+                        child: GradientBackground(
+                          gradient: gradient,
+                          tier: tier,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Stack(
             children: [
               // Info icon in top-left corner
               Positioned(
@@ -348,11 +432,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     Column(
                       children: [
-                        CircleAvatar(
-                          radius: 40,
-                          backgroundColor: Colors.white.withOpacity(0.3),
-                          child: Text('${stats.level}', 
-                              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+                        LevelBadge(
+                          level: stats.level,
+                          badgeType: effects.selectedLevelBadge,
+                          size: 80,
                         ),
                         const SizedBox(height: 8),
                         if (title != null)
@@ -431,6 +514,13 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
             ],
+          ),
+                ),
+                  ),
+                ),
+              ),
+                ),
+                  ),
           ),
         ),
       ),
@@ -903,13 +993,15 @@ class _CustomizationDialogState extends State<_CustomizationDialog> with SingleT
   late TabController _tabController;
   String? _selectedAchievementTitleId;
   int? _selectedBackgroundTier;
+  late ProfileEffects _profileEffects;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _selectedAchievementTitleId = widget.stats.selectedAchievementTitleId;
     _selectedBackgroundTier = widget.stats.customBackgroundTier;
+    _profileEffects = widget.stats.profileEffects;
   }
 
   @override
@@ -922,6 +1014,7 @@ class _CustomizationDialogState extends State<_CustomizationDialog> with SingleT
     final updatedStats = widget.stats.copyWith(
       selectedAchievementTitleId: _selectedAchievementTitleId,
       customBackgroundTier: _selectedBackgroundTier,
+      profileEffects: _profileEffects,
     );
     
     // Update the stats through repository
@@ -970,6 +1063,7 @@ class _CustomizationDialogState extends State<_CustomizationDialog> with SingleT
               tabs: const [
                 Tab(text: 'Title'),
                 Tab(text: 'Background'),
+                Tab(text: 'Effects'),
               ],
             ),
             Expanded(
@@ -978,6 +1072,7 @@ class _CustomizationDialogState extends State<_CustomizationDialog> with SingleT
                 children: [
                   _buildTitleSelection(unlockedAchievements),
                   _buildBackgroundSelection(unlockedBackgrounds, maxTier),
+                  _buildEffectsSelection(),
                 ],
               ),
             ),
@@ -991,6 +1086,7 @@ class _CustomizationDialogState extends State<_CustomizationDialog> with SingleT
                       setState(() {
                         _selectedAchievementTitleId = null;
                         _selectedBackgroundTier = null;
+                        _profileEffects = const ProfileEffects();
                       });
                     },
                     child: const Text('Reset to Default'),
@@ -1220,6 +1316,468 @@ class _CustomizationDialogState extends State<_CustomizationDialog> with SingleT
           ],
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildEffectsSelection() {
+    final level = widget.stats.level;
+    
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Patterns Section (Unlocks at Level 5)
+        const Text(
+          '🎨 Patterns',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        _buildPatternOption('None', null, true),
+        _buildPatternOption('Diagonal Stripes', 'stripes', ProfileEffects.isPatternUnlocked('stripes', level)),
+        _buildPatternOption('Dots', 'dots', ProfileEffects.isPatternUnlocked('dots', level)),
+        _buildPatternOption('Waves', 'waves', ProfileEffects.isPatternUnlocked('waves', level)),
+        _buildPatternOption('Hexagons', 'hexagons', ProfileEffects.isPatternUnlocked('hexagons', level)),
+        
+        const SizedBox(height: 24),
+        
+        // Effects Section (Unlocks at Level 10)
+        const Text(
+          '✨ Effects',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        _buildEffectToggle('Shimmer', 'shimmer', level, _profileEffects.shimmerEnabled, (val) {
+          setState(() {
+            _profileEffects = _profileEffects.copyWith(shimmerEnabled: val);
+          });
+        }),
+        _buildEffectToggle('Animated Gradient', 'animatedGradient', level, _profileEffects.animatedGradientEnabled, (val) {
+          setState(() {
+            _profileEffects = _profileEffects.copyWith(animatedGradientEnabled: val);
+          });
+        }),
+        _buildEffectToggle('Glow', 'glow', level, _profileEffects.glowEnabled, (val) {
+          setState(() {
+            _profileEffects = _profileEffects.copyWith(glowEnabled: val);
+          });
+        }),
+        if (_profileEffects.glowEnabled) _buildGlowIntensitySlider(),
+        if (_profileEffects.glowEnabled) _buildGlowColorPicker(),
+        
+        const SizedBox(height: 24),
+        
+        // Border Section (Unlocks at Level 25)
+        const Text(
+          '🖼️ Border',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        _buildPulseToggle(level),
+        
+        const SizedBox(height: 24),
+        
+        // Particles Section (Unlocks at Level 30)
+        const Text(
+          '🎆 Particles',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        _buildParticlesToggle(level),
+        if (_profileEffects.particlesEnabled) ...[
+          _buildParticleTypeSelector(level),
+          _buildParticleDensitySlider(),
+        ],
+        
+        const SizedBox(height: 24),
+        
+        // Level Badge Section (Unlocks at Level 35)
+        const Text(
+          '🏆 Level Badge',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        _buildLevelBadgeSelection(level),
+      ],
+    );
+  }
+
+  Widget _buildLevelBadgeSelection(int level) {
+    return Column(
+      children: [
+        // Default circle option
+        _buildLevelBadgeOption('Default Circle', null, true, level),
+        
+        // Level 35 badges
+        if (ProfileEffects.isLevelBadgeUnlocked('rotating_plain', level))
+          _buildLevelBadgeOption('🔵 Rotating Plain', 'rotating_plain', true, level),
+        if (ProfileEffects.isLevelBadgeUnlocked('dual_ring', level))
+          _buildLevelBadgeOption('⭕ Dual Ring', 'dual_ring', true, level),
+        
+        // Level 60 badges
+        if (ProfileEffects.isLevelBadgeUnlocked('rotating_circle', level))
+          _buildLevelBadgeOption('🔄 Rotating Circle', 'rotating_circle', true, level),
+        if (ProfileEffects.isLevelBadgeUnlocked('folding_cube', level))
+          _buildLevelBadgeOption('📦 Folding Cube', 'folding_cube', true, level),
+        
+        // Level 80 badges
+        if (ProfileEffects.isLevelBadgeUnlocked('double_bounce', level))
+          _buildLevelBadgeOption('⚡ Double Bounce', 'double_bounce', true, level),
+        if (ProfileEffects.isLevelBadgeUnlocked('cube_grid', level))
+          _buildLevelBadgeOption('🔲 Cube Grid', 'cube_grid', true, level),
+        
+        // Locked badges
+        if (!ProfileEffects.isLevelBadgeUnlocked('rotating_plain', level))
+          _buildLevelBadgeOption('🔵 Rotating Plain', 'rotating_plain', false, level),
+        if (!ProfileEffects.isLevelBadgeUnlocked('dual_ring', level))
+          _buildLevelBadgeOption('⭕ Dual Ring', 'dual_ring', false, level),
+        if (!ProfileEffects.isLevelBadgeUnlocked('rotating_circle', level))
+          _buildLevelBadgeOption('🔄 Rotating Circle', 'rotating_circle', false, level),
+        if (!ProfileEffects.isLevelBadgeUnlocked('folding_cube', level))
+          _buildLevelBadgeOption('📦 Folding Cube', 'folding_cube', false, level),
+        if (!ProfileEffects.isLevelBadgeUnlocked('double_bounce', level))
+          _buildLevelBadgeOption('⚡ Double Bounce', 'double_bounce', false, level),
+        if (!ProfileEffects.isLevelBadgeUnlocked('cube_grid', level))
+          _buildLevelBadgeOption('🔲 Cube Grid', 'cube_grid', false, level),
+      ],
+    );
+  }
+
+  Widget _buildLevelBadgeOption(String name, String? badgeId, bool unlocked, int level) {
+    final isSelected = _profileEffects.selectedLevelBadge == badgeId;
+    
+    String subtitle = '';
+    if (!unlocked && badgeId != null) {
+      int requiredLevel = 0;
+      switch (badgeId) {
+        case 'rotating_plain':
+        case 'dual_ring':
+          requiredLevel = 35;
+          break;
+        case 'rotating_circle':
+        case 'folding_cube':
+          requiredLevel = 60;
+          break;
+        case 'double_bounce':
+        case 'cube_grid':
+          requiredLevel = 80;
+          break;
+      }
+      subtitle = 'Unlocks at Level $requiredLevel';
+    }
+    
+    return Card(
+      color: isSelected ? Colors.blue.shade50 : null,
+      child: RadioListTile<String?>(
+        title: Text(name),
+        subtitle: subtitle.isNotEmpty ? Text(subtitle, style: const TextStyle(color: Colors.grey)) : null,
+        value: badgeId,
+        groupValue: _profileEffects.selectedLevelBadge,
+        onChanged: unlocked ? (val) {
+          setState(() {
+            _profileEffects = _profileEffects.copyWith(selectedLevelBadge: val);
+          });
+        } : null,
+      ),
+    );
+  }
+
+  Widget _buildPatternOption(String name, String? patternId, bool unlocked) {
+    final isSelected = _profileEffects.selectedPattern == patternId;
+    
+    String subtitle = '';
+    if (!unlocked && patternId != null) {
+      int requiredLevel = 0;
+      switch (patternId) {
+        case 'stripes': requiredLevel = 5; break;
+        case 'dots': requiredLevel = 45; break;
+        case 'waves': requiredLevel = 55; break;
+        case 'hexagons': requiredLevel = 70; break;
+      }
+      subtitle = 'Unlocks at Level $requiredLevel';
+    }
+    
+    return Card(
+      color: isSelected ? Colors.blue.shade50 : null,
+      child: RadioListTile<String?>(
+        title: Text(name),
+        subtitle: subtitle.isNotEmpty ? Text(subtitle, style: const TextStyle(color: Colors.grey)) : null,
+        value: patternId,
+        groupValue: _profileEffects.selectedPattern,
+        onChanged: unlocked ? (val) {
+          setState(() {
+            // Explicitly handle null for "None" option
+            if (val == null) {
+              _profileEffects = ProfileEffects(
+                selectedPattern: null,
+                shimmerEnabled: _profileEffects.shimmerEnabled,
+                animatedGradientEnabled: _profileEffects.animatedGradientEnabled,
+                glowEnabled: _profileEffects.glowEnabled,
+                glowIntensity: _profileEffects.glowIntensity,
+                pulseEnabled: _profileEffects.pulseEnabled,
+                pulseSpeed: _profileEffects.pulseSpeed,
+                particlesEnabled: _profileEffects.particlesEnabled,
+                particleType: _profileEffects.particleType,
+                particleDensity: _profileEffects.particleDensity,
+                particleColor: _profileEffects.particleColor,
+              );
+            } else {
+              _profileEffects = _profileEffects.copyWith(selectedPattern: val);
+            }
+          });
+        } : null,
+      ),
+    );
+  }
+
+  Widget _buildPulseToggle(int level) {
+    final unlocked = ProfileEffects.isEffectUnlocked('pulse', level);
+    
+    return Column(
+      children: [
+        SwitchListTile(
+          title: const Text('Pulsing Effect'),
+          subtitle: unlocked ? const Text('Gentle breathing animation') : const Text('Unlocks at Level 40', style: TextStyle(color: Colors.grey)),
+          value: _profileEffects.pulseEnabled,
+          onChanged: unlocked ? (val) {
+            setState(() {
+              _profileEffects = _profileEffects.copyWith(pulseEnabled: val);
+            });
+          } : null,
+        ),
+        if (unlocked && _profileEffects.pulseEnabled)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                const Text('Speed:'),
+                Expanded(
+                  child: Slider(
+                    value: _profileEffects.pulseSpeed,
+                    min: 0.5,
+                    max: 2.0,
+                    divisions: 15,
+                    label: '${_profileEffects.pulseSpeed.toStringAsFixed(1)}x',
+                    onChanged: (val) {
+                      setState(() {
+                        _profileEffects = _profileEffects.copyWith(pulseSpeed: val);
+                      });
+                    },
+                  ),
+                ),
+                Text('${_profileEffects.pulseSpeed.toStringAsFixed(1)}x'),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildEffectToggle(String name, String effectId, int level, bool value, ValueChanged<bool> onChanged) {
+    final unlocked = ProfileEffects.isEffectUnlocked(effectId, level);
+    int requiredLevel = 0;
+    
+    switch (effectId) {
+      case 'shimmer': requiredLevel = 20; break;
+      case 'animatedGradient': requiredLevel = 30; break;
+      case 'glow': requiredLevel = 35; break;
+    }
+    
+    return SwitchListTile(
+      title: Text(name),
+      subtitle: unlocked ? null : Text('Unlocks at Level $requiredLevel', style: const TextStyle(color: Colors.grey)),
+      value: value,
+      onChanged: unlocked ? onChanged : null,
+    );
+  }
+
+  Widget _buildGlowIntensitySlider() {
+    // Clamp value to valid range (in case of old saved data)
+    final clampedIntensity = _profileEffects.glowIntensity.clamp(0.5, 2.0);
+    final displayPercent = (clampedIntensity * 100).round();
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Glow Intensity: $displayPercent%'),
+          Slider(
+            value: clampedIntensity,
+            min: 0.5,
+            max: 2.0,
+            divisions: 15,
+            label: '$displayPercent%',
+            onChanged: (val) {
+              setState(() {
+                _profileEffects = _profileEffects.copyWith(glowIntensity: val);
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGlowColorPicker() {
+    final colors = [
+      {'name': 'Amber', 'color': Colors.amber},
+      {'name': 'Blue', 'color': Colors.blue},
+      {'name': 'Purple', 'color': Colors.purple},
+      {'name': 'Green', 'color': Colors.green},
+      {'name': 'Red', 'color': Colors.red},
+      {'name': 'Cyan', 'color': Colors.cyan},
+      {'name': 'Pink', 'color': Colors.pink},
+      {'name': 'White', 'color': Colors.white},
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Glow Color:'),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: colors.map((colorData) {
+              final color = colorData['color'] as Color;
+              final isSelected = _profileEffects.glowColor == color;
+              
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _profileEffects = _profileEffects.copyWith(glowColor: color);
+                  });
+                },
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? Colors.black : Colors.grey.shade300,
+                      width: isSelected ? 3 : 1,
+                    ),
+                    boxShadow: isSelected ? [
+                      BoxShadow(
+                        color: color.withOpacity(0.5),
+                        blurRadius: 8,
+                        spreadRadius: 2,
+                      ),
+                    ] : null,
+                  ),
+                  child: isSelected
+                      ? const Icon(Icons.check, color: Colors.black, size: 28)
+                      : null,
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildParticlesToggle(int level) {
+    final unlocked = ProfileEffects.areParticlesUnlocked(level);
+    
+    return SwitchListTile(
+      title: const Text('Particles'),
+      subtitle: unlocked ? null : const Text('Unlocks at Level 50', style: TextStyle(color: Colors.grey)),
+      value: _profileEffects.particlesEnabled,
+      onChanged: unlocked ? (val) {
+        setState(() {
+          _profileEffects = _profileEffects.copyWith(particlesEnabled: val);
+          // Set default particle type if none selected
+          if (val && _profileEffects.particleType == null) {
+            final availableTypes = ProfileEffects.getAvailableParticleTypes(level);
+            if (availableTypes.isNotEmpty) {
+              _profileEffects = _profileEffects.copyWith(particleType: availableTypes.first);
+            }
+          }
+        });
+      } : null,
+    );
+  }
+
+  Widget _buildParticleTypeSelector(int level) {
+    final availableTypes = ProfileEffects.getAvailableParticleTypes(level);
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Particle Type:', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          ...availableTypes.map((type) {
+            String displayName = '';
+            String levelInfo = '';
+            switch (type) {
+              case 'embers':
+                displayName = '🔥 Embers';
+                levelInfo = '(Level 50)';
+                break;
+              case 'fireflies':
+                displayName = '✨ Fireflies';
+                levelInfo = '(Level 55)';
+                break;
+              case 'stars':
+                displayName = '⭐ Stars';
+                levelInfo = '(Level 80)';
+                break;
+              case 'sparkles':
+                displayName = '💫 Sparkles';
+                levelInfo = '(Level 95)';
+                break;
+              case 'orbs':
+                displayName = '🔮 Orbs';
+                levelInfo = '(Level 95)';
+                break;
+            }
+            
+            return RadioListTile<String>(
+              title: Text('$displayName $levelInfo'),
+              value: type,
+              groupValue: _profileEffects.particleType,
+              onChanged: (val) {
+                setState(() {
+                  _profileEffects = _profileEffects.copyWith(particleType: val);
+                });
+              },
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildParticleDensitySlider() {
+    // Clamp value to valid range (in case of old saved data)
+    final clampedDensity = _profileEffects.particleDensity.clamp(0.5, 2.0);
+    final displayPercent = (clampedDensity * 100).round();
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Particle Density: $displayPercent%'),
+          Slider(
+            value: clampedDensity,
+            min: 0.5,
+            max: 2.0,
+            divisions: 15,
+            label: '$displayPercent%',
+            onChanged: (val) {
+              setState(() {
+                _profileEffects = _profileEffects.copyWith(particleDensity: val);
+              });
+            },
+          ),
+        ],
+      ),
     );
   }
 }

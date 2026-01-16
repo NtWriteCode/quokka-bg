@@ -53,7 +53,7 @@ static void my_application_activate(GApplication *application) {
   }
 
   gtk_window_set_default_size(window, 1280, 720);
-  
+
   // Set window icon
   g_autoptr(GError) icon_error = nullptr;
   gtk_window_set_icon_from_file(window, "data/flutter_assets/assets/icon/quokka_icon.png", &icon_error);

@@ -1,3 +1,4 @@
+import 'package:quokka/models/profile_effects.dart';
 
 enum AchievementTier { bronze, silver, gold }
 
@@ -82,6 +83,7 @@ class UserStats {
   // Customization
   final String? selectedAchievementTitleId; // Achievement ID to use as title, null means no custom title
   final int? customBackgroundTier; // null means use level-based background
+  final ProfileEffects profileEffects; // Visual effects and customization
   
   // Leaderboard
   final String userId; // Unique identifier for leaderboard
@@ -103,9 +105,11 @@ class UserStats {
     this.streakBonus = 0.0,
     this.selectedAchievementTitleId,
     this.customBackgroundTier,
+    ProfileEffects? profileEffects,
     String? userId,
     String? displayName,
-  }) : userId = userId ?? '',
+  }) : profileEffects = profileEffects ?? const ProfileEffects(),
+       userId = userId ?? '',
        displayName = displayName ?? '';
 
   /// Calculate XP required to reach a specific level from the previous level
@@ -158,6 +162,7 @@ class UserStats {
     double? streakBonus,
     Object? selectedAchievementTitleId = _notProvided,
     Object? customBackgroundTier = _notProvided,
+    ProfileEffects? profileEffects,
     String? userId,
     String? displayName,
   }) {
@@ -177,6 +182,7 @@ class UserStats {
       streakBonus: streakBonus ?? this.streakBonus,
       selectedAchievementTitleId: selectedAchievementTitleId == _notProvided ? this.selectedAchievementTitleId : selectedAchievementTitleId as String?,
       customBackgroundTier: customBackgroundTier == _notProvided ? this.customBackgroundTier : customBackgroundTier as int?,
+      profileEffects: profileEffects ?? this.profileEffects,
       userId: userId ?? this.userId,
       displayName: displayName ?? this.displayName,
     );
@@ -200,6 +206,7 @@ class UserStats {
         'streakBonus': streakBonus,
         'selectedAchievementTitleId': selectedAchievementTitleId,
         'customBackgroundTier': customBackgroundTier,
+        'profileEffects': profileEffects.toJson(),
         'userId': userId,
         'displayName': displayName,
       };
@@ -220,6 +227,9 @@ class UserStats {
         totalWins: json['totalWins'] ?? 0,
         selectedAchievementTitleId: json['selectedAchievementTitleId'],
         customBackgroundTier: json['customBackgroundTier'],
+        profileEffects: json['profileEffects'] != null 
+            ? ProfileEffects.fromJson(json['profileEffects']) 
+            : const ProfileEffects(),
         userId: json['userId'],
         displayName: json['displayName'],
       );

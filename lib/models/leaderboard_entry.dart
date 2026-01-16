@@ -1,9 +1,12 @@
+import 'package:quokka/models/profile_effects.dart';
+
 class LeaderboardEntry {
   final String userId;
   final String displayName;
   final String? achievementTitleId; // Achievement ID to use as title
   final String? achievementTitleName; // Achievement title text (for display without lookup)
   final int? customBackgroundTier;
+  final ProfileEffects? profileEffects; // Profile customization effects
   final DateTime lastUpdated;
   final LeaderboardStats stats;
 
@@ -13,6 +16,7 @@ class LeaderboardEntry {
     this.achievementTitleId,
     this.achievementTitleName,
     this.customBackgroundTier,
+    this.profileEffects,
     required this.lastUpdated,
     required this.stats,
   });
@@ -23,6 +27,7 @@ class LeaderboardEntry {
         'achievementTitleId': achievementTitleId,
         'achievementTitleName': achievementTitleName,
         'customBackgroundTier': customBackgroundTier,
+        'profileEffects': profileEffects?.toJson(),
         'lastUpdated': lastUpdated.toIso8601String(),
         'stats': stats.toJson(),
       };
@@ -34,6 +39,9 @@ class LeaderboardEntry {
         achievementTitleId: json['achievementTitleId'],
         achievementTitleName: json['achievementTitleName'],
         customBackgroundTier: json['customBackgroundTier'],
+        profileEffects: json['profileEffects'] != null 
+            ? ProfileEffects.fromJson(json['profileEffects'])
+            : null,
         lastUpdated: json['lastUpdated'] != null
             ? DateTime.parse(json['lastUpdated'])
             : DateTime.now(),

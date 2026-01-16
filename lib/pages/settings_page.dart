@@ -339,6 +339,54 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           const Divider(),
+          _buildSectionHeader('Debug Tools'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      await widget.repository.debugAdjustLevel(-5);
+                      setState(() {});
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Level decreased by 5 (Now: ${widget.repository.userStats.level})')),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.remove),
+                    label: const Text('Level -5'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade400,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      await widget.repository.debugAdjustLevel(5);
+                      setState(() {});
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Level increased by 5 (Now: ${widget.repository.userStats.level})')),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Level +5'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade400,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(),
           _buildSectionHeader('Data Management'),
           ListTile(
             leading: const Icon(Icons.refresh_outlined, color: Colors.orange),

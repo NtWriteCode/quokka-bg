@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quokka/models/leaderboard_entry.dart';
+import 'package:quokka/models/profile_effects.dart';
 import 'package:quokka/repositories/game_repository.dart';
 import 'package:quokka/helpers/title_helper.dart';
 import 'package:quokka/widgets/gradient_background.dart';
+import 'package:quokka/widgets/pattern_overlay.dart';
+import 'package:quokka/widgets/shimmer_effect.dart';
+import 'package:quokka/widgets/animated_gradient_background.dart';
+import 'package:quokka/widgets/particle_effect.dart';
+import 'package:quokka/widgets/pulse_effect.dart';
+import 'package:quokka/widgets/level_badge.dart';
 
 enum LeaderboardCategory {
   level('Level', '🏆'),
@@ -135,23 +142,6 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
     }
     
     return topPlayers;
-  }
-
-  int _getStatValue(LeaderboardEntry entry) {
-    switch (_selectedCategory) {
-      case LeaderboardCategory.level:
-        return entry.stats.level;
-      case LeaderboardCategory.totalPlays:
-        return entry.stats.totalPlays;
-      case LeaderboardCategory.currentStreak:
-        return entry.stats.currentStreak;
-      case LeaderboardCategory.gamesOwned:
-        return entry.stats.gamesOwned;
-      case LeaderboardCategory.achievements:
-        return entry.stats.achievementsUnlocked;
-      case LeaderboardCategory.longestStreak:
-        return entry.stats.longestStreak;
-    }
   }
 
   @override
@@ -286,7 +276,6 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
     final tier = entry.customBackgroundTier ?? (entry.stats.level / 5).floor();
     final gradient = TitleHelper.getBackgroundForLevel(tier * 5);
     final title = entry.achievementTitleName; // Can be null if no achievement title selected
-    final statValue = _getStatValue(entry);
 
     // Rank medal
     String rankDisplay = '$rank';
@@ -299,22 +288,64 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
       rankDisplay = '🥉';
     }
 
+    // Get profile effects for glow
+    final effects = entry.profileEffects ?? const ProfileEffects();
+    final glowColor = effects.glowColor ?? Colors.amber;
+    
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: GestureDetector(
         onTap: () => _showUserDetailsDialog(context, entry, rank, isCurrentUser, topCategories),
-        child: GradientBackground(
-          gradient: gradient,
-          tier: tier,
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            decoration: BoxDecoration(
+        child: Container(
+          decoration: effects.glowEnabled ? BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: glowColor.withOpacity((0.6 * effects.glowIntensity).clamp(0.0, 1.0)),
+                blurRadius: 20 * effects.glowIntensity,
+                spreadRadius: 5 * effects.glowIntensity,
+              ),
+              BoxShadow(
+                color: glowColor.withOpacity((0.4 * effects.glowIntensity).clamp(0.0, 1.0)),
+                blurRadius: 40 * effects.glowIntensity,
+                spreadRadius: 10 * effects.glowIntensity,
+              ),
+              BoxShadow(
+                color: glowColor.withOpacity((0.3 * effects.glowIntensity).clamp(0.0, 1.0)),
+                blurRadius: 60 * effects.glowIntensity,
+                spreadRadius: 15 * effects.glowIntensity,
+              ),
+            ],
+          ) : null,
+          child: PulseEffect(
+            enabled: effects.pulseEnabled,
+            speed: effects.pulseSpeed,
+            child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              border: isCurrentUser
-                  ? Border.all(color: Colors.amber, width: 3)
-                  : null,
-            ),
-            child: Padding(
+              child: ParticleEffect(
+                enabled: effects.particlesEnabled,
+                particleType: effects.particleType ?? 'stars',
+                density: effects.particleDensity,
+                color: effects.particleColor,
+                child: ShimmerEffect(
+                  enabled: effects.shimmerEnabled,
+                  child: PatternOverlay(
+                    pattern: effects.selectedPattern,
+                    child: AnimatedGradientBackground(
+                      gradient: gradient,
+                      enabled: effects.animatedGradientEnabled,
+                      child: GradientBackground(
+                        gradient: gradient,
+                        tier: tier,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: isCurrentUser
+                                ? Border.all(color: Colors.amber, width: 3)
+                                : null,
+                          ),
+                          child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
                 children: [
@@ -414,26 +445,11 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                     ),
                   ),
                   
-                  // Stat value
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        statValue.toString(),
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        'Level ${entry.stats.level}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withOpacity(0.8),
-                        ),
-                      ),
-                    ],
+                  // Level badge
+                  LevelBadge(
+                    level: entry.stats.level,
+                    badgeType: effects.selectedLevelBadge,
+                    size: 60,
                   ),
                 ],
               ),
@@ -441,6 +457,13 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
           ),
         ),
       ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
     );
   }
 

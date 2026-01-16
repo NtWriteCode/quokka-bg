@@ -141,31 +141,31 @@ class TitleHelper {
       switch (tier) {
         case 16: // Level 80-84 - Immortal (Nebula)
           return const LinearGradient(
-            colors: [Color(0xFF5C6BC0), Color(0xFF283593), Color(0xFF1A237E)],
+            colors: [Color(0xFF5C6BC0), Color(0xFF1A237E)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           );
         case 17: // Level 85-89 - Cosmic (Deep Space)
           return const LinearGradient(
-            colors: [Color(0xFF512DA8), Color(0xFF311B92), Color(0xFF1A237E)],
+            colors: [Color(0xFF512DA8), Color(0xFF1A237E)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           );
         case 18: // Level 90-94 - Eternal (Supernova)
           return const LinearGradient(
-            colors: [Color(0xFF8E24AA), Color(0xFF6A1B9A), Color(0xFF4A148C)],
+            colors: [Color(0xFF8E24AA), Color(0xFF4A148C)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           );
         case 19: // Level 95-99 - Legendary (Galaxy)
           return const LinearGradient(
-            colors: [Color(0xFF3949AB), Color(0xFF283593), Color(0xFF1A237E), Color(0xFF4A148C)],
+            colors: [Color(0xFF3949AB), Color(0xFF1A237E)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           );
         default: // Level 100+ - Ultimate (Universe)
           return const LinearGradient(
-            colors: [Color(0xFF1976D2), Color(0xFF303F9F), Color(0xFF512DA8), Color(0xFF7B1FA2)],
+            colors: [Color(0xFF1976D2), Color(0xFF7B1FA2)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           );

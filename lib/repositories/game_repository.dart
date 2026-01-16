@@ -574,6 +574,20 @@ class GameRepository extends ChangeNotifier {
     }
   }
 
+  /// Debug method to adjust level for testing
+  Future<void> debugAdjustLevel(int levelChange) async {
+    final newLevel = (_userStats.level + levelChange).clamp(1, 100);
+    final xpForLevel = UserStats.getXpRequiredForLevel(newLevel);
+    
+    _userStats = _userStats.copyWith(
+      level: newLevel,
+      totalXp: (xpForLevel * 0.5), // Set to middle of level
+    );
+    
+    await saveUserStats();
+    notifyListeners();
+  }
+
   Future<void> recalculateXp() async {
     await _preSaveSync();
     
@@ -1343,6 +1357,7 @@ class GameRepository extends ChangeNotifier {
       achievementTitleId: _userStats.selectedAchievementTitleId,
       achievementTitleName: achievementTitleName,
       customBackgroundTier: _userStats.customBackgroundTier,
+      profileEffects: _userStats.profileEffects,
       lastUpdated: DateTime.now(),
       stats: LeaderboardStats(
         level: _userStats.level,
