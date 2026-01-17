@@ -99,6 +99,7 @@ class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
         newLevel: data['newLevel'],
         newBackgroundTier: data['newBackgroundTier'],
         xpForNext: data['xpForNext'],
+        leaderboardUnlocked: data['leaderboardUnlocked'] == true,
       ),
     );
   }

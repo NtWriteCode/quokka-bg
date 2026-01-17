@@ -50,6 +50,16 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
     
     final repository = context.read<GameRepository>();
     
+    if (repository.userStats.level < 3) {
+      if (!mounted) return;
+      setState(() {
+        _isEnabled = false;
+        _isLoading = false;
+        _entries = [];
+      });
+      return;
+    }
+
     // Check if leaderboard is enabled
     final enabled = await repository.isLeaderboardEnabled();
     
@@ -165,6 +175,10 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
   }
 
   Widget _buildDisabledView() {
+    final repository = context.read<GameRepository>();
+    final level = repository.userStats.level;
+    final lockedByLevel = level < 3;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -178,14 +192,16 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Leaderboard Not Available',
+              lockedByLevel ? 'Ranking Locked' : 'Leaderboard Not Available',
               style: Theme.of(context).textTheme.headlineSmall,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              'The leaderboard feature is not enabled on your sync server. '
-              'To enable it, create a "global_shared/quokka_bg" folder on your WebDAV server.',
+              lockedByLevel
+                  ? 'Reach Level 3 to unlock Ranking.'
+                  : 'The leaderboard feature is not enabled on your sync server. '
+                      'To enable it, create a "global_shared/quokka_bg" folder on your WebDAV server.',
               style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),

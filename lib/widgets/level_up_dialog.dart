@@ -6,12 +6,14 @@ class LevelUpDialog extends StatefulWidget {
   final int newLevel;
   final int? newBackgroundTier;
   final int xpForNext;
+  final bool leaderboardUnlocked;
 
   const LevelUpDialog({
     super.key,
     required this.newLevel,
     this.newBackgroundTier,
     required this.xpForNext,
+    this.leaderboardUnlocked = false,
   });
 
   @override
@@ -120,6 +122,31 @@ class _LevelUpDialogState extends State<LevelUpDialog> {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Colors.purple,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              if (widget.leaderboardUnlocked) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.shade200, width: 2),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.leaderboard, color: Colors.green),
+                      const SizedBox(width: 8),
+                      const Text(
+                        '🏆 Ranking Unlocked!',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
                         ),
                       ),
                     ],

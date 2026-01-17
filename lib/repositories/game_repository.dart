@@ -99,6 +99,7 @@ class GameRepository extends ChangeNotifier {
       'newLevel': newLevel,
       'newBackgroundTier': (newLevel / 5).floor(),
       'xpForNext': UserStats.getXpRequiredForLevel(newLevel + 1),
+      'leaderboardUnlocked': oldLevel < 3 && newLevel >= 3,
     });
   }
   
@@ -767,7 +768,7 @@ class GameRepository extends ChangeNotifier {
       // This ensures the leaderboard is updated on app start
       try {
         final leaderboardEnabled = await _syncService.isLeaderboardEnabled();
-        if (leaderboardEnabled) {
+        if (leaderboardEnabled && _userStats.level >= 3) {
           await uploadLeaderboardEntry();
         }
       } catch (e) {
@@ -848,7 +849,7 @@ class GameRepository extends ChangeNotifier {
     
     // Also upload leaderboard entry if enabled
     final leaderboardEnabled = await _syncService.isLeaderboardEnabled();
-    if (leaderboardEnabled) {
+    if (leaderboardEnabled && _userStats.level >= 3) {
       await uploadLeaderboardEntry();
     }
   }
@@ -896,7 +897,7 @@ class GameRepository extends ChangeNotifier {
     
     // Also upload leaderboard entry if enabled
     final leaderboardEnabled = await _syncService.isLeaderboardEnabled();
-    if (leaderboardEnabled) {
+    if (leaderboardEnabled && _userStats.level >= 3) {
       await uploadLeaderboardEntry();
     }
   }
@@ -1329,6 +1330,7 @@ class GameRepository extends ChangeNotifier {
 
   /// Upload current user's leaderboard entry
   Future<void> uploadLeaderboardEntry() async {
+    if (_userStats.level < 3) return;
     await ensureUserId();
     
     // If display name is empty, set a default
@@ -1411,6 +1413,7 @@ class GameRepository extends ChangeNotifier {
 
   /// Download leaderboard
   Future<List<LeaderboardEntry>> downloadLeaderboard() async {
+    if (_userStats.level < 3) return [];
     return await _syncService.downloadLeaderboard();
   }
 
