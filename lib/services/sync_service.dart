@@ -7,6 +7,7 @@ import 'package:quokka/models/leaderboard_entry.dart';
 import 'package:quokka/models/user_stats.dart';
 
 class SyncSummary {
+  final String displayName;
   final int level;
   final int achievements;
   final int totalXp;
@@ -16,6 +17,7 @@ class SyncSummary {
   final bool hasData;
 
   const SyncSummary({
+    required this.displayName,
     required this.level,
     required this.achievements,
     required this.totalXp,
@@ -111,6 +113,7 @@ class SyncService {
     int achievements = 0;
     int totalXp = 0;
     int level = 1;
+    String displayName = '';
 
     Future<List<dynamic>?> _readList(String fileName) async {
       try {
@@ -132,6 +135,7 @@ class SyncService {
         level = stats.level;
         totalXp = stats.totalXp.round();
         achievements = stats.unlockedAchievementIds.length;
+        displayName = stats.displayName;
         hasAny = true;
       }
     } catch (_) {}
@@ -144,6 +148,7 @@ class SyncService {
     if (playersList != null) players = playersList.length;
 
     return SyncSummary(
+      displayName: displayName,
       level: level,
       achievements: achievements,
       totalXp: totalXp,

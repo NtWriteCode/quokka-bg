@@ -30,6 +30,7 @@ class _SettingsPageState extends State<SettingsPage> {
         widget.repository.playRecords.isNotEmpty ||
         widget.repository.players.isNotEmpty;
     return SyncSummary(
+      displayName: stats.displayName,
       level: stats.level,
       achievements: stats.unlockedAchievementIds.length,
       totalXp: stats.totalXp.round(),
@@ -41,12 +42,16 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   String _formatSummary(SyncSummary summary) {
-    return 'Level ${summary.level} • XP ${summary.totalXp} • Achievements ${summary.achievements}\n'
+    final nameLine = summary.displayName.isNotEmpty
+        ? 'Ranking name: ${summary.displayName}\n'
+        : '';
+    return '${nameLine}Level ${summary.level} • XP ${summary.totalXp} • Achievements ${summary.achievements}\n'
         'Games ${summary.games} • Plays ${summary.plays} • Players ${summary.players}';
   }
 
   bool _isSameSummary(SyncSummary a, SyncSummary b) {
-    return a.level == b.level &&
+    return a.displayName == b.displayName &&
+        a.level == b.level &&
         a.achievements == b.achievements &&
         a.totalXp == b.totalXp &&
         a.games == b.games &&
