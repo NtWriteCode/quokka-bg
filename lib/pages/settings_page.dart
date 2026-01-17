@@ -19,6 +19,152 @@ class _SettingsPageState extends State<SettingsPage> {
   final _passController = TextEditingController();
   bool _isTesting = false;
   bool _hasCredentials = false;
+  bool _isSyncPromptBusy = false;
+
+  SyncSummary _buildLocalSummary() {
+    final stats = widget.repository.userStats;
+    final hasData = stats.level > 1 ||
+        stats.totalXp > 0 ||
+        stats.unlockedAchievementIds.isNotEmpty ||
+        widget.repository.ownedGames.isNotEmpty ||
+        widget.repository.playRecords.isNotEmpty ||
+        widget.repository.players.isNotEmpty;
+    return SyncSummary(
+      level: stats.level,
+      achievements: stats.unlockedAchievementIds.length,
+      totalXp: stats.totalXp.round(),
+      games: widget.repository.ownedGames.length,
+      plays: widget.repository.playRecords.length,
+      players: widget.repository.players.length,
+      hasData: hasData,
+    );
+  }
+
+  String _formatSummary(SyncSummary summary) {
+    return 'Level ${summary.level} • XP ${summary.totalXp} • Achievements ${summary.achievements}\n'
+        'Games ${summary.games} • Plays ${summary.plays} • Players ${summary.players}';
+  }
+
+  bool _isSameSummary(SyncSummary a, SyncSummary b) {
+    return a.level == b.level &&
+        a.achievements == b.achievements &&
+        a.totalXp == b.totalXp &&
+        a.games == b.games &&
+        a.plays == b.plays &&
+        a.players == b.players;
+  }
+
+  bool _isDowngrade({
+    required bool upload,
+    required SyncSummary local,
+    required SyncSummary remote,
+  }) {
+    final from = upload ? local : remote;
+    final to = upload ? remote : local;
+
+    return from.level < to.level ||
+        from.totalXp < to.totalXp ||
+        from.achievements < to.achievements ||
+        from.games < to.games ||
+        from.plays < to.plays ||
+        from.players < to.players;
+  }
+
+  Future<bool> _confirmSyncReplace({
+    required bool upload,
+    required SyncSummary local,
+    required SyncSummary? remote,
+  }) async {
+    if (remote == null || !remote.hasData) {
+      if (upload) {
+        return await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Upload to Server?'),
+                content: Text(
+                  'No remote data was found. Uploading will create a new remote dataset.\n\n'
+                  'Local: ${_formatSummary(local)}',
+                ),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Upload')),
+                ],
+              ),
+            ) ??
+            false;
+      }
+
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('No Remote Data'),
+          content: const Text('No remote data was found on the server. Download is not available.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
+          ],
+        ),
+      );
+      return false;
+    }
+
+    if (!_isDowngrade(upload: upload, local: local, remote: remote)) {
+      return true;
+    }
+
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(upload ? 'Replace Remote Data?' : 'Replace Local Data?'),
+            content: Text(
+              upload
+                  ? 'Remote will be replaced by your local data:\n\n'
+                        'Local: ${_formatSummary(local)}\n\n'
+                        'Remote: ${_formatSummary(remote)}'
+                  : 'Local data will be replaced by remote:\n\n'
+                        'Local: ${_formatSummary(local)}\n\n'
+                        'Remote: ${_formatSummary(remote)}',
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(upload ? 'Replace Remote' : 'Replace Local'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<String?> _chooseInitialSync({
+    required SyncSummary local,
+    required SyncSummary? remote,
+  }) async {
+    if (remote == null || !remote.hasData) {
+      return local.hasData ? 'upload' : 'smart';
+    }
+
+    if (_isSameSummary(local, remote)) {
+      return 'smart';
+    }
+
+    return await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Choose Sync Source'),
+        content: Text(
+          'Which data should be used?\n\n'
+          'Local: ${_formatSummary(local)}\n\n'
+          'Remote: ${_formatSummary(remote)}',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, null), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, 'download'), child: const Text('Use Remote')),
+          TextButton(onPressed: () => Navigator.pop(context, 'upload'), child: const Text('Use Local')),
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -37,114 +183,88 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveSyncSettings() async {
-    // Check if user has local data
-    final hasLocalData = widget.repository.ownedGames.isNotEmpty || 
-                        widget.repository.players.isNotEmpty || 
-                        widget.repository.playRecords.isNotEmpty;
+    final localSummary = _buildLocalSummary();
     
-    // First, ask what to do with local data
-    if (hasLocalData) {
-      final choice = await showDialog<String>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Sync Strategy'),
-          content: const Text(
-            'You have local data on this device. What would you like to do?\n\n'
-            '• Upload: Send your local data to the server (recommended for first sync)\n'
-            '• Download: Replace local data with server data\n'
-            '• Smart Sync: Automatically sync based on which is newer'
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, null),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'upload'),
-              child: const Text('Upload Local'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'download'),
-              child: const Text('Download Server'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'smart'),
-              child: const Text('Smart Sync'),
-            ),
-          ],
-        ),
+    try {
+      if (_isSyncPromptBusy) return;
+      _isSyncPromptBusy = true;
+
+      final remoteSummary = await _syncService.fetchRemoteSummary(
+        url: _urlController.text.trim(),
+        user: _userController.text.trim(),
+        pass: _passController.text.trim(),
       );
 
-      if (choice == null) return;
+      final choice = await _chooseInitialSync(local: localSummary, remote: remoteSummary);
+      if (choice == null) {
+        _isSyncPromptBusy = false;
+        return;
+      }
 
-      try {
-        await _syncService.saveCredentials(
-          url: _urlController.text.trim(),
-          user: _userController.text.trim(),
-          pass: _passController.text.trim(),
-        );
-
-        setState(() => _hasCredentials = true);
-
-        // Perform sync with progress dialog
-        if (choice == 'upload') {
-          await _performSyncWithProgress(
-            syncOperation: () => widget.repository.triggerManualSyncUp(),
-            successMessage: 'WebDAV Connected and Data Uploaded',
-          );
-        } else if (choice == 'download') {
-          await _performSyncWithProgress(
-            syncOperation: () => widget.repository.loadGames(),
-            successMessage: 'WebDAV Connected and Data Synced',
-          );
-        } else if (choice == 'smart') {
+      if (choice == 'upload') {
+        if (remoteSummary != null && remoteSummary.hasData && _isSameSummary(localSummary, remoteSummary)) {
+          _isSyncPromptBusy = false;
           await _performSyncWithProgress(
             syncOperation: () => widget.repository.loadGames(),
             successMessage: 'WebDAV Connected and Synced',
           );
+          return;
         }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        final confirmed = await _confirmSyncReplace(
+          upload: true,
+          local: localSummary,
+          remote: remoteSummary,
+        );
+        if (!confirmed) {
+          _isSyncPromptBusy = false;
+          return;
+        }
+      } else if (choice == 'download') {
+        if (remoteSummary != null && remoteSummary.hasData && _isSameSummary(localSummary, remoteSummary)) {
+          _isSyncPromptBusy = false;
+          await _performSyncWithProgress(
+            syncOperation: () => widget.repository.loadGames(),
+            successMessage: 'WebDAV Connected and Synced',
           );
+          return;
+        }
+        final confirmed = await _confirmSyncReplace(
+          upload: false,
+          local: localSummary,
+          remote: remoteSummary,
+        );
+        if (!confirmed) {
+          _isSyncPromptBusy = false;
+          return;
         }
       }
-    } else {
-      // No local data, just save and sync normally
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Connect to WebDAV?'),
-          content: const Text('This will save the credentials and sync with the server.'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Connect')),
-          ],
-        )
+
+      await _syncService.saveCredentials(
+        url: _urlController.text.trim(),
+        user: _userController.text.trim(),
+        pass: _passController.text.trim(),
       );
 
-      if (confirm != true) return;
+      setState(() => _hasCredentials = true);
 
-      try {
-        await _syncService.saveCredentials(
-          url: _urlController.text.trim(),
-          user: _userController.text.trim(),
-          pass: _passController.text.trim(),
+      if (choice == 'upload') {
+        await _performSyncWithProgress(
+          syncOperation: () => widget.repository.triggerManualSyncUp(),
+          successMessage: 'WebDAV Connected and Data Uploaded',
         );
-        
-        setState(() => _hasCredentials = true);
-        
+      } else {
         await _performSyncWithProgress(
           syncOperation: () => widget.repository.loadGames(),
-          successMessage: 'WebDAV Connected',
+          successMessage: 'WebDAV Connected and Data Synced',
         );
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-          );
-        }
+      }
+      _isSyncPromptBusy = false;
+    } catch (e) {
+      _isSyncPromptBusy = false;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -292,37 +412,40 @@ class _SettingsPageState extends State<SettingsPage> {
               leading: const Icon(Icons.cloud_upload_outlined),
               title: const Text('Force Upload to Server'),
               subtitle: const Text('Upload current local data to WebDAV'),
-              onTap: () => _performSyncWithProgress(
-                syncOperation: () => widget.repository.triggerManualSyncUp(),
-                successMessage: 'Data uploaded to server successfully',
-              ),
+              onTap: () async {
+                final localSummary = _buildLocalSummary();
+                final remoteSummary = await _syncService.fetchRemoteSummary();
+                final confirmed = await _confirmSyncReplace(
+                  upload: true,
+                  local: localSummary,
+                  remote: remoteSummary,
+                );
+                if (!confirmed) return;
+
+                await _performSyncWithProgress(
+                  syncOperation: () => widget.repository.triggerManualSyncUp(),
+                  successMessage: 'Data uploaded to server successfully',
+                );
+              },
             ),
             ListTile(
               leading: const Icon(Icons.cloud_download_outlined),
               title: const Text('Force Download from Server'),
               subtitle: const Text('Download and overwrite local data from WebDAV'),
               onTap: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Download from Server?'),
-                    content: const Text('This will download data from the server and overwrite your local data if the server has a newer version. Any unsaved local changes may be lost.'),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('Download'),
-                      ),
-                    ],
-                  ),
+                final localSummary = _buildLocalSummary();
+                final remoteSummary = await _syncService.fetchRemoteSummary();
+                final confirmed = await _confirmSyncReplace(
+                  upload: false,
+                  local: localSummary,
+                  remote: remoteSummary,
                 );
+                if (!confirmed) return;
 
-                if (confirm == true) {
-                  await _performSyncWithProgress(
-                    syncOperation: () => widget.repository.loadGames(),
-                    successMessage: 'Data synced from server successfully',
-                  );
-                }
+                await _performSyncWithProgress(
+                  syncOperation: () => widget.repository.loadGames(),
+                  successMessage: 'Data synced from server successfully',
+                );
               },
             ),
           ],
@@ -337,54 +460,6 @@ class _SettingsPageState extends State<SettingsPage> {
               await widget.repository.setShowUnownedGames(val);
               setState(() {});
             },
-          ),
-          const Divider(),
-          _buildSectionHeader('Debug Tools'),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      await widget.repository.debugAdjustLevel(-5);
-                      setState(() {});
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Level decreased by 5 (Now: ${widget.repository.userStats.level})')),
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.remove),
-                    label: const Text('Level -5'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade400,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      await widget.repository.debugAdjustLevel(5);
-                      setState(() {});
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Level increased by 5 (Now: ${widget.repository.userStats.level})')),
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Level +5'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade400,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
           const Divider(),
           _buildSectionHeader('Data Management'),

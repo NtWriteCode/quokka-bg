@@ -4,6 +4,27 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:webdav_client/webdav_client.dart' as webdav;
 import 'package:quokka/models/leaderboard_entry.dart';
+import 'package:quokka/models/user_stats.dart';
+
+class SyncSummary {
+  final int level;
+  final int achievements;
+  final int totalXp;
+  final int games;
+  final int plays;
+  final int players;
+  final bool hasData;
+
+  const SyncSummary({
+    required this.level,
+    required this.achievements,
+    required this.totalXp,
+    required this.games,
+    required this.plays,
+    required this.players,
+    required this.hasData,
+  });
+}
 
 class SyncService {
   static const _storage = FlutterSecureStorage();
@@ -77,6 +98,60 @@ class SyncService {
       if (logErrors) print('DEBUG: WebDAV Client creation failed: $e');
       return null;
     }
+  }
+
+  Future<SyncSummary?> fetchRemoteSummary({String? url, String? user, String? pass}) async {
+    final client = await _connect(url: url, user: user, pass: pass, logErrors: false);
+    if (client == null) return null;
+
+    bool hasAny = false;
+    int games = 0;
+    int plays = 0;
+    int players = 0;
+    int achievements = 0;
+    int totalXp = 0;
+    int level = 1;
+
+    Future<List<dynamic>?> _readList(String fileName) async {
+      try {
+        final content = await client.read('$_folderName/$fileName');
+        final json = jsonDecode(utf8.decode(content));
+        if (json is List) {
+          hasAny = true;
+          return json;
+        }
+      } catch (_) {}
+      return null;
+    }
+
+    try {
+      final statsContent = await client.read('$_folderName/user_stats.json');
+      final json = jsonDecode(utf8.decode(statsContent));
+      if (json is Map<String, dynamic>) {
+        final stats = UserStats.fromJson(json);
+        level = stats.level;
+        totalXp = stats.totalXp.round();
+        achievements = stats.unlockedAchievementIds.length;
+        hasAny = true;
+      }
+    } catch (_) {}
+
+    final gamesList = await _readList('games.json');
+    if (gamesList != null) games = gamesList.length;
+    final playsList = await _readList('plays.json');
+    if (playsList != null) plays = playsList.length;
+    final playersList = await _readList('players.json');
+    if (playersList != null) players = playersList.length;
+
+    return SyncSummary(
+      level: level,
+      achievements: achievements,
+      totalXp: totalXp,
+      games: games,
+      plays: plays,
+      players: players,
+      hasData: hasAny,
+    );
   }
 
   Future<String?> testConnection({String? url, String? user, String? pass}) async {

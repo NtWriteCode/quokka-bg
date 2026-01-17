@@ -40,13 +40,15 @@ class RootPage extends StatefulWidget {
   State<RootPage> createState() => _RootPageState();
 }
 
-class _RootPageState extends State<RootPage> {
+class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   late GameRepository _repository;
+  bool _isAutoSyncing = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _repository = context.read<GameRepository>();
     _repository.loadGames().then((_) {
       // Check daily login bonus after loading
@@ -92,6 +94,28 @@ class _RootPageState extends State<RootPage> {
         xpForNext: data['xpForNext'],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _autoSyncOnResume();
+    }
+  }
+
+  Future<void> _autoSyncOnResume() async {
+    if (_isAutoSyncing) return;
+    _isAutoSyncing = true;
+    try {
+      await _repository.loadGames();
+    } catch (_) {}
+    _isAutoSyncing = false;
   }
   
   @override
