@@ -216,6 +216,19 @@ class SyncService {
     }
   }
 
+  Future<int?> fetchRemoteVersion({String? url, String? user, String? pass}) async {
+    final client = await _connect(url: url, user: user, pass: pass, logErrors: false);
+    if (client == null) return null;
+
+    try {
+      final List<int> content = await client.read('$_folderName/$_metadataFile');
+      final json = jsonDecode(utf8.decode(content));
+      return json['version'] ?? 0;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> upload(Directory localDir, int version) async {
     final client = await _connect();
     if (client == null) return;

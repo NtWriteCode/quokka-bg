@@ -26,6 +26,10 @@ class GameRepository extends ChangeNotifier {
   final Map<String, Map<String, dynamic>> _detailsCache = {};
   final _syncService = SyncService();
   int _dataVersion = 0;
+
+  int get dataVersion => _dataVersion;
+  Future<int?> fetchRemoteVersion() => _syncService.fetchRemoteVersion();
+  Future<bool> hasSyncCredentials() => _syncService.hasCredentials();
   bool _showUnownedGames = true;
   
   final StreamController<List<Achievement>> _unlockedController = StreamController.broadcast();

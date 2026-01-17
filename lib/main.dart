@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'pages/played_games_page.dart';
@@ -44,6 +45,10 @@ class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   late GameRepository _repository;
   bool _isAutoSyncing = false;
+  Timer? _syncCheckTimer;
+  bool _isSyncCheckRunning = false;
+  bool _syncPromptVisible = false;
+  int? _lastPromptedRemoteVersion;
 
   @override
   void initState() {
@@ -82,6 +87,8 @@ class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
         });
       }
     });
+
+    _startPeriodicSyncCheck();
   }
   
   void _showLevelUpDialog(Map<String, dynamic> data) {
@@ -99,6 +106,7 @@ class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _syncCheckTimer?.cancel();
     super.dispose();
   }
 
@@ -116,6 +124,61 @@ class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
       await _repository.loadGames();
     } catch (_) {}
     _isAutoSyncing = false;
+  }
+
+  void _startPeriodicSyncCheck() {
+    _syncCheckTimer?.cancel();
+    _syncCheckTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _checkRemoteVersion();
+    });
+  }
+
+  Future<void> _checkRemoteVersion() async {
+    if (_isSyncCheckRunning || _syncPromptVisible) return;
+    _isSyncCheckRunning = true;
+    try {
+      final hasCreds = await _repository.hasSyncCredentials();
+      if (!hasCreds) {
+        _isSyncCheckRunning = false;
+        return;
+      }
+
+      final remoteVersion = await _repository.fetchRemoteVersion();
+      if (remoteVersion == null) {
+        _isSyncCheckRunning = false;
+        return;
+      }
+
+      final localVersion = _repository.dataVersion;
+      if (remoteVersion > localVersion &&
+          (remoteVersion != _lastPromptedRemoteVersion)) {
+        _lastPromptedRemoteVersion = remoteVersion;
+        _syncPromptVisible = true;
+        if (!mounted) return;
+
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('New Sync Available'),
+            content: Text('A newer version is available on the server (v$remoteVersion).\n'
+                'Do you want to sync now?'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Later')),
+              TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sync Now')),
+            ],
+          ),
+        );
+
+        if (confirm == true) {
+          await _repository.loadGames();
+        }
+        _syncPromptVisible = false;
+      }
+    } catch (_) {
+      _syncPromptVisible = false;
+    } finally {
+      _isSyncCheckRunning = false;
+    }
   }
   
   @override
