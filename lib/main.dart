@@ -70,6 +70,7 @@ class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
             showDialog(
               context: context,
               barrierDismissible: false,
+              useRootNavigator: true,
               builder: (context) => AchievementDialog(achievements: achievements),
             );
           }
@@ -95,6 +96,7 @@ class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
     showDialog(
       context: context,
       barrierDismissible: false,
+      useRootNavigator: true,
       builder: (context) => LevelUpDialog(
         newLevel: data['newLevel'],
         newBackgroundTier: data['newBackgroundTier'],
