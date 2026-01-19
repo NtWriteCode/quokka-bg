@@ -173,7 +173,7 @@ class SyncService {
 
   /// Checks if remote version is newer than local.
   /// Returns [true] if remote is newer and files were downloaded.
-  Future<bool> sync(Directory localDir, int localVersion) async {
+  Future<bool> sync(Directory localDir, int localVersion, {bool allowUpload = false}) async {
     final client = await _connect();
     if (client == null) return false;
 
@@ -209,7 +209,7 @@ class SyncService {
           }
         }
         return true;
-      } else if (localVersion > remoteVersion) {
+      } else if (localVersion > remoteVersion && allowUpload) {
         // Upload local files
         await upload(localDir, localVersion);
       }

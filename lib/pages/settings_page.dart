@@ -1,5 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:archive/archive.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:quokka/repositories/game_repository.dart';
 import 'package:quokka/services/sync_service.dart';
 
@@ -20,6 +25,56 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _isTesting = false;
   bool _hasCredentials = false;
   bool _isSyncPromptBusy = false;
+
+  Future<void> _exportLocalBackup() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final filesToExport = [
+      'games.json',
+      'players.json',
+      'plays.json',
+      'user_stats.json',
+      'metadata.json',
+    ];
+
+    final archive = Archive();
+    for (final name in filesToExport) {
+      final file = File(p.join(directory.path, name));
+      if (await file.exists()) {
+        final bytes = await file.readAsBytes();
+        archive.addFile(ArchiveFile(name, bytes.length, bytes));
+      }
+    }
+
+    if (archive.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No local data to export.')),
+        );
+      }
+      return;
+    }
+
+    final outputDir = await FilePicker.platform.getDirectoryPath();
+    if (outputDir == null) return;
+
+    final now = DateTime.now();
+    final timestamp = '${now.year.toString().padLeft(4, '0')}'
+        '${now.month.toString().padLeft(2, '0')}'
+        '${now.day.toString().padLeft(2, '0')}_'
+        '${now.hour.toString().padLeft(2, '0')}'
+        '${now.minute.toString().padLeft(2, '0')}'
+        '${now.second.toString().padLeft(2, '0')}';
+    final fileName = 'quokka_backup_$timestamp.zip';
+    final outputPath = p.join(outputDir, fileName);
+
+    final zipBytes = ZipEncoder().encode(archive);
+    await File(outputPath).writeAsBytes(zipBytes, flush: true);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Backup exported to $outputPath')),
+      );
+    }
+  }
 
   SyncSummary _buildLocalSummary() {
     final stats = widget.repository.userStats;
@@ -46,7 +101,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ? 'Ranking name: ${summary.displayName}\n'
         : '';
     return '${nameLine}Level ${summary.level} • XP ${summary.totalXp} • Achievements ${summary.achievements}\n'
-        'Games ${summary.games} • Plays ${summary.plays} • Players ${summary.players}';
+        'Games ${summary.games} • Plays ${summary.plays}';
   }
 
   bool _isSameSummary(SyncSummary a, SyncSummary b) {
@@ -55,8 +110,7 @@ class _SettingsPageState extends State<SettingsPage> {
         a.achievements == b.achievements &&
         a.totalXp == b.totalXp &&
         a.games == b.games &&
-        a.plays == b.plays &&
-        a.players == b.players;
+        a.plays == b.plays;
   }
 
   bool _isDowngrade({
@@ -253,8 +307,8 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() => _hasCredentials = true);
 
       if (choice == 'upload') {
-        await _performSyncWithProgress(
-          syncOperation: () => widget.repository.triggerManualSyncUp(),
+          await _performSyncWithProgress(
+            syncOperation: () => widget.repository.triggerManualSyncUp(skipConsent: true),
           successMessage: 'WebDAV Connected and Data Uploaded',
         );
       } else {
@@ -428,7 +482,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 if (!confirmed) return;
 
                 await _performSyncWithProgress(
-                  syncOperation: () => widget.repository.triggerManualSyncUp(),
+                  syncOperation: () => widget.repository.triggerManualSyncUp(skipConsent: true),
                   successMessage: 'Data uploaded to server successfully',
                 );
               },
@@ -468,6 +522,12 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const Divider(),
           _buildSectionHeader('Data Management'),
+          ListTile(
+            leading: const Icon(Icons.archive_outlined, color: Colors.blueGrey),
+            title: const Text('Export Local Backup (ZIP)'),
+            subtitle: const Text('Save a zipped backup of your local data'),
+            onTap: _exportLocalBackup,
+          ),
           ListTile(
             leading: const Icon(Icons.refresh_outlined, color: Colors.orange),
             title: const Text('Recalculate XP', style: TextStyle(color: Colors.orange)),

@@ -26,10 +26,60 @@ class GameRepository extends ChangeNotifier {
   final Map<String, Map<String, dynamic>> _detailsCache = {};
   final _syncService = SyncService();
   int _dataVersion = 0;
+  final StreamController<Map<String, SyncSummary>> _syncConsentController = StreamController.broadcast();
+  Stream<Map<String, SyncSummary>> get onSyncConsent => _syncConsentController.stream;
+  Completer<bool>? _syncConsentCompleter;
 
   int get dataVersion => _dataVersion;
   Future<int?> fetchRemoteVersion() => _syncService.fetchRemoteVersion();
   Future<bool> hasSyncCredentials() => _syncService.hasCredentials();
+
+  SyncSummary _buildLocalSummary() {
+    return SyncSummary(
+      displayName: _userStats.displayName,
+      level: _userStats.level,
+      achievements: _userStats.unlockedAchievementIds.length,
+      totalXp: _userStats.totalXp.round(),
+      games: _ownedGames.length,
+      plays: _playRecords.length,
+      players: _players.length,
+      hasData: _userStats.level > 1 ||
+          _userStats.totalXp > 0 ||
+          _userStats.unlockedAchievementIds.isNotEmpty ||
+          _ownedGames.isNotEmpty ||
+          _playRecords.isNotEmpty ||
+          _players.isNotEmpty,
+    );
+  }
+
+  bool _isDowngrade(SyncSummary local, SyncSummary remote) {
+    return local.level < remote.level ||
+        local.totalXp < remote.totalXp ||
+        local.achievements < remote.achievements ||
+        local.games < remote.games ||
+        local.plays < remote.plays;
+  }
+
+  Future<bool> _requireSyncConsent(SyncSummary local, SyncSummary remote) async {
+    if (_syncConsentCompleter != null) return false;
+    _syncConsentCompleter = Completer<bool>();
+    _syncConsentController.add({'local': local, 'remote': remote});
+    final result = await _syncConsentCompleter!.future;
+    _syncConsentCompleter = null;
+    return result;
+  }
+
+  void resolveSyncConsent(bool allow) {
+    _syncConsentCompleter?.complete(allow);
+  }
+
+  Future<bool> _canUploadBasedOnStats() async {
+    final remote = await _syncService.fetchRemoteSummary();
+    if (remote == null || !remote.hasData) return true;
+    final local = _buildLocalSummary();
+    if (!_isDowngrade(local, remote)) return true;
+    return await _requireSyncConsent(local, remote);
+  }
   bool _showUnownedGames = true;
   
   final StreamController<List<Achievement>> _unlockedController = StreamController.broadcast();
@@ -843,7 +893,11 @@ class GameRepository extends ChangeNotifier {
     await saveUserStats();
   }
 
-  Future<void> triggerManualSyncUp() async {
+  Future<void> triggerManualSyncUp({bool skipConsent = false}) async {
+    if (!skipConsent) {
+      final canUpload = await _canUploadBasedOnStats();
+      if (!canUpload) return;
+    }
     final directory = await getApplicationDocumentsDirectory();
     await _syncService.upload(directory, _dataVersion);
     
@@ -893,7 +947,10 @@ class GameRepository extends ChangeNotifier {
         // This is handled by sync service upload typically, but let's ensure upload() takes all
       }
     }
-    await _syncService.upload(directory, _dataVersion);
+    final canUpload = await _canUploadBasedOnStats();
+    if (canUpload) {
+      await _syncService.upload(directory, _dataVersion);
+    }
     
     // Also upload leaderboard entry if enabled
     final leaderboardEnabled = await _syncService.isLeaderboardEnabled();

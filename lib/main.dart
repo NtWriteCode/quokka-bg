@@ -9,6 +9,7 @@ import 'pages/leaderboard_page.dart';
 import 'widgets/achievement_dialog.dart';
 import 'widgets/level_up_dialog.dart';
 import 'repositories/game_repository.dart';
+import 'services/sync_service.dart';
 import 'widgets/main_scaffold.dart';
 
 void main() {
@@ -89,6 +90,13 @@ class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
       }
     });
 
+    _repository.onSyncConsent.listen((payload) {
+      final local = payload['local'];
+      final remote = payload['remote'];
+      if (local == null || remote == null) return;
+      _showSyncConsentDialog(local, remote);
+    });
+
     _startPeriodicSyncCheck();
   }
   
@@ -127,6 +135,37 @@ class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
       await _repository.loadGames();
     } catch (_) {}
     _isAutoSyncing = false;
+  }
+
+  String _formatSyncSummary(SyncSummary summary) {
+    final nameLine = summary.displayName.isNotEmpty
+        ? 'Ranking name: ${summary.displayName}\n'
+        : '';
+    return '${nameLine}Level ${summary.level} • XP ${summary.totalXp} • Achievements ${summary.achievements}\n'
+        'Games ${summary.games} • Plays ${summary.plays}';
+  }
+
+  Future<void> _showSyncConsentDialog(SyncSummary local, SyncSummary remote) async {
+    if (!mounted) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Potential Downgrade'),
+        content: Text(
+          'Uploading now would overwrite higher stats on the server.\n\n'
+          'Local: ${_formatSyncSummary(local)}\n\n'
+          'Remote: ${_formatSyncSummary(remote)}',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Upload Anyway')),
+        ],
+      ),
+    );
+
+    _repository.resolveSyncConsent(confirm == true);
   }
 
   void _startPeriodicSyncCheck() {
