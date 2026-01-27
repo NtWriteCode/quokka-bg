@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:archive/archive.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/file_picker.dart' as fp;
+
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:quokka/repositories/game_repository.dart';
@@ -54,7 +55,8 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
 
-    final outputDir = await FilePicker.platform.getDirectoryPath();
+    final outputDir = await fp.FilePicker.getDirectoryPath();
+    // final outputDir = null; // Debugging build
     if (outputDir == null) return;
 
     final now = DateTime.now();
