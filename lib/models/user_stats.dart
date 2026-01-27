@@ -73,6 +73,9 @@ class UserStats {
   final int wishlistConversions;
   final int totalPlays;
   final int totalWins;
+  final int coopWins;
+  final int soloWins;
+  final int soloPlays;
   
   // Daily login and streak tracking
   final DateTime? lastLoginDate;
@@ -99,6 +102,9 @@ class UserStats {
     this.wishlistConversions = 0,
     this.totalPlays = 0,
     this.totalWins = 0,
+    this.coopWins = 0,
+    this.soloWins = 0,
+    this.soloPlays = 0,
     this.lastLoginDate,
     this.lastPlayDate,
     this.consecutiveDays = 0,
@@ -156,6 +162,9 @@ class UserStats {
     int? wishlistConversions,
     int? totalPlays,
     int? totalWins,
+    int? coopWins,
+    int? soloWins,
+    int? soloPlays,
     Object? lastLoginDate = _notProvided,
     Object? lastPlayDate = _notProvided,
     int? consecutiveDays,
@@ -176,6 +185,9 @@ class UserStats {
       wishlistConversions: wishlistConversions ?? this.wishlistConversions,
       totalPlays: totalPlays ?? this.totalPlays,
       totalWins: totalWins ?? this.totalWins,
+      coopWins: coopWins ?? this.coopWins,
+      soloWins: soloWins ?? this.soloWins,
+      soloPlays: soloPlays ?? this.soloPlays,
       lastLoginDate: lastLoginDate == _notProvided ? this.lastLoginDate : lastLoginDate as DateTime?,
       lastPlayDate: lastPlayDate == _notProvided ? this.lastPlayDate : lastPlayDate as DateTime?,
       consecutiveDays: consecutiveDays ?? this.consecutiveDays,
@@ -200,6 +212,9 @@ class UserStats {
         'wishlistConversions': wishlistConversions,
         'totalPlays': totalPlays,
         'totalWins': totalWins,
+        'coopWins': coopWins,
+        'soloWins': soloWins,
+        'soloPlays': soloPlays,
         'lastLoginDate': lastLoginDate?.toIso8601String(),
         'lastPlayDate': lastPlayDate?.toIso8601String(),
         'consecutiveDays': consecutiveDays,
@@ -225,7 +240,11 @@ class UserStats {
         streakBonus: (json['streakBonus'] is int) ? (json['streakBonus'] as int).toDouble() : (json['streakBonus'] ?? 0.0),
         totalPlays: json['totalPlays'] ?? 0,
         totalWins: json['totalWins'] ?? 0,
-        selectedAchievementTitleId: json['selectedAchievementTitleId'],
+        coopWins: json['coopWins'] ?? 0,
+        soloWins: json['soloWins'] ?? 0,
+        soloPlays: json['soloPlays'] ?? 0,
+        selectedAchievementTitleId: json['selectedAchievementTitleId'] ?? json['customTitle'],
+
         customBackgroundTier: json['customBackgroundTier'],
         profileEffects: json['profileEffects'] != null 
             ? ProfileEffects.fromJson(json['profileEffects']) 

@@ -262,6 +262,50 @@ class GameRepository extends ChangeNotifier {
         case 'wish_1': shouldUnlock = _ownedGames.any((g) => g.isWishlist); break;
         case 'wish_to_own_1': shouldUnlock = _userStats.wishlistConversions >= 1; break;
         
+        // Cooperative
+        case 'coop_win_1': shouldUnlock = _userStats.coopWins >= 1; break;
+        case 'coop_win_10': shouldUnlock = _userStats.coopWins >= 10; break;
+        case 'coop_win_25': shouldUnlock = _userStats.coopWins >= 25; break;
+        case 'coop_comm_limits': {
+          shouldUnlock = _playRecords.any((p) {
+            if (p.isVictory != true) return false;
+            final game = _ownedGames.cast<BoardGame?>().firstWhere((g) => g?.id == p.gameId, orElse: () => null);
+            return game?.mechanics.contains('Communication Limits') ?? false;
+          });
+          break;
+        }
+
+        // Lone Wolf
+        case 'solo_win_1': shouldUnlock = _userStats.soloWins >= 1; break;
+        case 'solo_win_10': shouldUnlock = _userStats.soloWins >= 10; break;
+        case 'solo_plays_25': shouldUnlock = _userStats.soloPlays >= 25; break;
+        case 'solo_own_5': {
+          shouldUnlock = _ownedGames.where((g) => 
+            (g.status == GameStatus.owned || g.status == GameStatus.lended) && g.isSolo
+          ).length >= 5;
+          break;
+        }
+        case 'solo_ghost': {
+          final soloGameIdsPlayed = <String>{};
+          for (final p in _playRecords) {
+            final game = _ownedGames.cast<BoardGame?>().firstWhere((g) => g?.id == p.gameId, orElse: () => null);
+            if (game?.isSolo == true) {
+              soloGameIdsPlayed.add(p.gameId);
+            }
+          }
+          shouldUnlock = soloGameIdsPlayed.length >= 10;
+          break;
+        }
+
+        // Specialist (BGG Mechanics)
+        case 'mech_arch': shouldUnlock = _countGamesWithMechanic('Deck, Bag, and Pool Building') >= 5; break;
+        case 'mech_manager': shouldUnlock = _countGamesWithMechanic('Worker Placement') >= 5; break;
+        case 'mech_influence': shouldUnlock = _countGamesWithMechanic('Area Majority / Influence') >= 5; break;
+        case 'mech_logistics': shouldUnlock = _countGamesWithMechanic('Network and Route Building') >= 5; break;
+        case 'mech_powers': shouldUnlock = _countGamesWithMechanic('Variable Player Powers') >= 5; break;
+        case 'distinct_mechs_15': shouldUnlock = _countDistinctMechanics() >= 15; break;
+        case 'distinct_mechs_30': shouldUnlock = _countDistinctMechanics() >= 30; break;
+        
         // Variety achievements
         case 'distinct_50': {
           final uniqueGames = _playRecords.map((p) => p.gameId).toSet();
@@ -472,6 +516,12 @@ class GameRepository extends ChangeNotifier {
         }
         case 'weekend_warrior': {
           shouldUnlock = _checkWeekendWarrior();
+          break;
+        }
+        case 'data_archivist': {
+          // This one is usually unlocked manually by the refresh method
+          // but we can check if any game has mechanics now as a proxy
+          shouldUnlock = _ownedGames.any((g) => g.mechanics.isNotEmpty);
           break;
         }
         
@@ -706,6 +756,22 @@ class GameRepository extends ChangeNotifier {
     final totalPlays = _playRecords.length;
     final totalWins = _playRecords.where((p) => p.winnerId != null).length;
     
+    int soloPlays = 0;
+    int soloWins = 0;
+    int coopWins = 0;
+    
+    for (final play in _playRecords) {
+      final game = _ownedGames.cast<BoardGame?>().firstWhere((g) => g?.id == play.gameId, orElse: () => null);
+      if (game != null) {
+        if (game.isSolo) {
+          soloPlays++;
+          if (play.isVictory == true) soloWins++;
+        } else if (game.isCooperative) {
+          if (play.isVictory == true) coopWins++;
+        }
+      }
+    }
+    
     // 7. Update user stats
     _userStats = _userStats.copyWith(
       totalXp: remaining,
@@ -721,6 +787,9 @@ class GameRepository extends ChangeNotifier {
       lendedCount: lendedCount,
       totalPlays: totalPlays,
       totalWins: totalWins,
+      soloPlays: soloPlays,
+      soloWins: soloWins,
+      coopWins: coopWins,
       // Keep wishlistConversions as is (can't recalculate)
     );
     
@@ -1048,6 +1117,21 @@ class GameRepository extends ChangeNotifier {
       totalWins: record.winnerId != null ? _userStats.totalWins + 1 : _userStats.totalWins,
     );
     
+    // Solo/Coop counters
+    final game = _ownedGames.cast<BoardGame?>().firstWhere((g) => g?.id == record.gameId, orElse: () => null);
+    if (game != null) {
+      if (game.isSolo) {
+        _userStats = _userStats.copyWith(
+          soloPlays: _userStats.soloPlays + 1,
+          soloWins: record.isVictory == true ? _userStats.soloWins + 1 : _userStats.soloWins,
+        );
+      } else if (game.isCooperative) {
+        _userStats = _userStats.copyWith(
+          coopWins: record.isVictory == true ? _userStats.coopWins + 1 : _userStats.coopWins,
+        );
+      }
+    }
+    
     await checkAchievements();
   }
 
@@ -1160,6 +1244,7 @@ class GameRepository extends ChangeNotifier {
     }
     
     await saveGames();
+    await checkAchievements(); // Check for Data Archivist or variety changes
     notifyListeners();
   }
 
@@ -1748,5 +1833,22 @@ class GameRepository extends ChangeNotifier {
     }
     
     return weekendCounts.values.any((count) => count >= 5);
+  }
+
+  int _countGamesWithMechanic(String mechanic) {
+    return _ownedGames.where((g) => 
+      (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+      g.mechanics.contains(mechanic)
+    ).length;
+  }
+
+  int _countDistinctMechanics() {
+    final mechs = <String>{};
+    for (final g in _ownedGames) {
+      if (g.status == GameStatus.owned || g.status == GameStatus.lended) {
+        mechs.addAll(g.mechanics);
+      }
+    }
+    return mechs.length;
   }
 }
