@@ -199,6 +199,7 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
         status: widget.isWishlist ? GameStatus.wishlist : GameStatus.owned,
         isExpansion: _isExpansion,
         parentGameId: _parentGameId,
+        mechanics: _gameDetails!.mechanics,
       );
 
       if (widget.existingGame != null) {
@@ -568,6 +569,21 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
                       if (game.comment != null) _buildInfoRow(Icons.comment, 'Comment', game.comment!),
                     ],
                   ],
+
+                    if (game.mechanics.isNotEmpty) ...[
+                      const Divider(height: 32),
+                      const Text('Mechanics', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: game.mechanics.map((m) => Chip(
+                          label: Text(m, style: const TextStyle(fontSize: 12)),
+                          backgroundColor: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.3),
+                          visualDensity: VisualDensity.compact,
+                        )).toList(),
+                      ),
+                    ],
 
                     if (game.description != null) ...[
                       const Divider(height: 32),

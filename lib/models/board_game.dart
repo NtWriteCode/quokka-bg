@@ -22,6 +22,7 @@ class BoardGame {
   final DateTime dateAdded;
   final bool isExpansion;
   final String? parentGameId;
+  final List<String> mechanics;
 
   // Purchase details
   final double? price;
@@ -59,6 +60,7 @@ class BoardGame {
     this.status = GameStatus.owned,
     this.isExpansion = false,
     this.parentGameId,
+    this.mechanics = const [],
   });
 
   BoardGame copyWith({
@@ -85,6 +87,7 @@ class BoardGame {
     GameStatus? status,
     bool? isExpansion,
     String? parentGameId,
+    List<String>? mechanics,
   }) {
     return BoardGame(
       id: id ?? this.id,
@@ -110,6 +113,7 @@ class BoardGame {
       status: status ?? this.status,
       isExpansion: isExpansion ?? this.isExpansion,
       parentGameId: parentGameId ?? this.parentGameId,
+      mechanics: mechanics ?? this.mechanics,
     );
   }
 
@@ -138,6 +142,7 @@ class BoardGame {
       'status': status.name,
       'isExpansion': isExpansion,
       'parentGameId': parentGameId,
+      'mechanics': mechanics,
     };
   }
 
@@ -169,6 +174,7 @@ class BoardGame {
       ),
       isExpansion: json['isExpansion'] ?? false,
       parentGameId: json['parentGameId'],
+      mechanics: json['mechanics'] != null ? List<String>.from(json['mechanics']) : [],
     );
   }
 }

@@ -455,6 +455,92 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<void> _refreshAllGamesData() async {
+    final total = widget.repository.ownedGames.length;
+    if (total == 0) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Refresh All Games?'),
+        content: Text('This will refresh descriptions, ratings, and mechanics for all $total games in your collection from BoardGameGeek. This takes a while (2 seconds per game) to be respectful to BGG servers.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Refresh')),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final progressNotifier = ValueNotifier<int>(0);
+    bool isCancelled = false;
+
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return PopScope(
+          canPop: false,
+          onPopInvoked: (didPop) {
+            if (didPop) return;
+            isCancelled = true;
+          },
+          child: AlertDialog(
+            title: const Text('Refreshing Data'),
+            content: ValueListenableBuilder<int>(
+              valueListenable: progressNotifier,
+              builder: (context, current, _) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    LinearProgressIndicator(value: total > 0 ? current / total : 0),
+                    const SizedBox(height: 16),
+                    Text('Processing game $current / $total'),
+                    const SizedBox(height: 8),
+                    const Text('Please wait...', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  ],
+                );
+              },
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  isCancelled = true;
+                  Navigator.pop(context);
+                },
+                child: const Text('Run in Background'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    try {
+      await widget.repository.refreshAllGamesData(
+        onProgress: (c, t) {
+          progressNotifier.value = c;
+        }
+      );
+      
+      if (mounted && !isCancelled) {
+        Navigator.pop(context); // Close dialog
+      }
+    } catch (e) {
+      if (mounted) {
+        if (!isCancelled) Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error refreshing data: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      progressNotifier.dispose();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -527,6 +613,13 @@ class _SettingsPageState extends State<SettingsPage> {
             title: const Text('Export Local Backup (ZIP)'),
             subtitle: const Text('Save a zipped backup of your local data'),
             onTap: _exportLocalBackup,
+          ),
+          ListTile(
+            leading: const Icon(Icons.cloud_sync_outlined, color: Colors.blue),
+            title: const Text('Refresh All Game Data', style: TextStyle(color: Colors.blue)),
+            subtitle: const Text('Fetch latest BGG info (descriptions, mechanics, ratings) for all games'),
+            onTap: _refreshAllGamesData,
+
           ),
           ListTile(
             leading: const Icon(Icons.refresh_outlined, color: Colors.orange),

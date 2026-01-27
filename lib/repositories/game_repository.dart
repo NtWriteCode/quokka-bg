@@ -1119,7 +1119,48 @@ class GameRepository extends ChangeNotifier {
       _ownedGames[index] = updatedGame;
       await _handleStatusTransition(oldGame, updatedGame.status);
       await saveGames();
+      notifyListeners();
     }
+  }
+
+  /// Refresh all games' data from BGG
+  Future<void> refreshAllGamesData({Function(int, int)? onProgress}) async {
+    final total = _ownedGames.length;
+    for (int i = 0; i < total; i++) {
+      final game = _ownedGames[i];
+      if (onProgress != null) onProgress(i + 1, total);
+
+      // Fetch fresh details, bypassing cache
+      final details = await fetchGameDetails(game.id, ignoreCache: true);
+      if (details != null) {
+        final freshGame = convertDetailsToLocal(details);
+        if (freshGame != null) {
+          // Merge useful fields from BGG while keeping user fields
+          _ownedGames[i] = _ownedGames[i].copyWith(
+            name: freshGame.name,
+            description: freshGame.description,
+            yearPublished: freshGame.yearPublished,
+            minPlayers: freshGame.minPlayers,
+            maxPlayers: freshGame.maxPlayers,
+            playingTime: freshGame.playingTime,
+            minPlayTime: freshGame.minPlayTime,
+            maxPlayTime: freshGame.maxPlayTime,
+            minAge: freshGame.minAge,
+            averageRating: freshGame.averageRating,
+            averageWeight: freshGame.averageWeight,
+            customImageUrl: freshGame.customImageUrl,
+            customThumbnailUrl: freshGame.customThumbnailUrl,
+            mechanics: freshGame.mechanics,
+          );
+        }
+      }
+
+      // Delay to avoid DOSing BGG
+      await Future.delayed(const Duration(seconds: 2));
+    }
+    
+    await saveGames();
+    notifyListeners();
   }
 
   Future<void> updateGameStatus(String id, GameStatus newStatus) async {
@@ -1195,8 +1236,8 @@ class GameRepository extends ChangeNotifier {
     }
   }
   
-  Future<Map<String, dynamic>?> fetchGameDetails(String gameId) async {
-    if (_detailsCache.containsKey(gameId)) {
+  Future<Map<String, dynamic>?> fetchGameDetails(String gameId, {bool ignoreCache = false}) async {
+    if (!ignoreCache && _detailsCache.containsKey(gameId)) {
       return _detailsCache[gameId];
     }
 
@@ -1252,6 +1293,18 @@ class GameRepository extends ChangeNotifier {
           }
         }
 
+        final List<String> mechanics = [];
+        if (item['links'] != null && item['links']['boardgamemechanic'] != null) {
+          final mechLinks = item['links']['boardgamemechanic'];
+          if (mechLinks is List) {
+            for (final m in mechLinks) {
+              if (m['name'] != null) {
+                mechanics.add(m['name'].toString());
+              }
+            }
+          }
+        }
+
         final id = item['id']?.toString() ?? '';
         final name = item['name'] ?? 'Unknown';
         final description = item['description'];
@@ -1292,6 +1345,7 @@ class GameRepository extends ChangeNotifier {
             dateAdded: DateTime.now(),
             isExpansion: isExpansion,
             parentGameId: parentGameId,
+            mechanics: mechanics,
         );
 
       } catch (e) {
