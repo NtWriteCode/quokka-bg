@@ -260,12 +260,18 @@ class GameRepository extends ChangeNotifier {
         case 'players_10': shouldUnlock = _players.length >= 10; break;
         case 'players_20': shouldUnlock = _players.length >= 20; break;
         case 'wish_1': shouldUnlock = _ownedGames.any((g) => g.isWishlist); break;
-        case 'wish_to_own_1': shouldUnlock = _userStats.wishlistConversions >= 1; break;
-        
         // Cooperative
         case 'coop_win_1': shouldUnlock = _userStats.coopWins >= 1; break;
         case 'coop_win_10': shouldUnlock = _userStats.coopWins >= 10; break;
         case 'coop_win_25': shouldUnlock = _userStats.coopWins >= 25; break;
+        case 'coop_campaign': {
+          shouldUnlock = _playRecords.any((p) {
+            if (p.isVictory != true) return false;
+            final game = _ownedGames.cast<BoardGame?>().firstWhere((g) => g?.id == p.gameId, orElse: () => null);
+            return game != null && game.isCooperative && game.mechanics.contains('Scenario / Mission / Campaign Game');
+          });
+          break;
+        }
         case 'coop_comm_limits': {
           shouldUnlock = _playRecords.any((p) {
             if (p.isVictory != true) return false;
@@ -278,33 +284,34 @@ class GameRepository extends ChangeNotifier {
         // Lone Wolf
         case 'solo_win_1': shouldUnlock = _userStats.soloWins >= 1; break;
         case 'solo_win_10': shouldUnlock = _userStats.soloWins >= 10; break;
-        case 'solo_plays_25': shouldUnlock = _userStats.soloPlays >= 25; break;
+        case 'solo_win_25': shouldUnlock = _userStats.soloWins >= 25; break;
         case 'solo_own_5': {
           shouldUnlock = _ownedGames.where((g) => 
-            (g.status == GameStatus.owned || g.status == GameStatus.lended) && g.isSolo
+            (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
+            (g.isSolo || g.mechanics.contains('Solo / Solitaire Game'))
           ).length >= 5;
           break;
         }
-        case 'solo_ghost': {
+        case 'solo_variety': {
           final soloGameIdsPlayed = <String>{};
           for (final p in _playRecords) {
             final game = _ownedGames.cast<BoardGame?>().firstWhere((g) => g?.id == p.gameId, orElse: () => null);
-            if (game?.isSolo == true) {
+            if (game != null && (game.isSolo || game.mechanics.contains('Solo / Solitaire Game'))) {
               soloGameIdsPlayed.add(p.gameId);
             }
           }
-          shouldUnlock = soloGameIdsPlayed.length >= 10;
+          shouldUnlock = soloGameIdsPlayed.length >= 5;
           break;
         }
 
-        // Specialist (BGG Mechanics)
+        // Specialist (Exact BGG Mechanics)
         case 'mech_arch': shouldUnlock = _countGamesWithMechanic('Deck, Bag, and Pool Building') >= 5; break;
         case 'mech_manager': shouldUnlock = _countGamesWithMechanic('Worker Placement') >= 5; break;
         case 'mech_influence': shouldUnlock = _countGamesWithMechanic('Area Majority / Influence') >= 5; break;
-        case 'mech_logistics': shouldUnlock = _countGamesWithMechanic('Network and Route Building') >= 5; break;
-        case 'mech_powers': shouldUnlock = _countGamesWithMechanic('Variable Player Powers') >= 5; break;
-        case 'distinct_mechs_15': shouldUnlock = _countDistinctMechanics() >= 15; break;
-        case 'distinct_mechs_30': shouldUnlock = _countDistinctMechanics() >= 30; break;
+        case 'mech_set': shouldUnlock = _countGamesWithMechanic('Set Collection') >= 10; break;
+        case 'mech_dice': shouldUnlock = _countGamesWithMechanic('Dice Rolling') >= 10; break;
+        case 'mech_push': shouldUnlock = _countGamesWithMechanic('Push Your Luck') >= 5; break;
+        case 'mech_tile': shouldUnlock = _countGamesWithMechanic('Tile Placement') >= 5; break;
         
         // Variety achievements
         case 'distinct_50': {
