@@ -8,6 +8,8 @@ class PlayRecord {
   final Map<String, int?> playerScores; // Map<PlayerId, Score>
   final String? winnerId;
   final List<String> expansionIds;
+  final int? commonScore;
+  final bool? isVictory; // For coop/solo games (Goal Reached)
 
   PlayRecord({
     required this.id,
@@ -19,6 +21,8 @@ class PlayRecord {
     required this.playerScores,
     this.winnerId,
     this.expansionIds = const [],
+    this.commonScore,
+    this.isVictory,
   });
 
   Map<String, dynamic> toJson() {
@@ -32,6 +36,8 @@ class PlayRecord {
       'playerScores': playerScores,
       'winnerId': winnerId,
       'expansionIds': expansionIds,
+      'commonScore': commonScore,
+      'isVictory': isVictory,
     };
   }
 
@@ -46,6 +52,8 @@ class PlayRecord {
       playerScores: Map<String, int?>.from(json['playerScores'] ?? {}),
       winnerId: json['winnerId'],
       expansionIds: List<String>.from(json['expansionIds'] ?? []),
+      commonScore: json['commonScore'],
+      isVictory: json['isVictory'],
     );
   }
 }

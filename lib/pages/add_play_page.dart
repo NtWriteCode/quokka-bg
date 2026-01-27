@@ -25,6 +25,10 @@ class _AddPlayPageState extends State<AddPlayPage> {
   String? _manualWinnerId;
   bool _isWinnerOverridden = false;
   final Set<String> _selectedExpansions = {};
+  
+  // Coop/Solo fields
+  final _commonScoreController = TextEditingController();
+  bool _isVictory = true;
 
   @override
   void initState() {
@@ -54,6 +58,8 @@ class _AddPlayPageState extends State<AddPlayPage> {
         }
       }
       _selectedExpansions.addAll(play.expansionIds);
+      _commonScoreController.text = play.commonScore?.toString() ?? '';
+      _isVictory = play.isVictory ?? true;
     }
   }
 
@@ -162,6 +168,8 @@ class _AddPlayPageState extends State<AddPlayPage> {
       playerScores: scores,
       winnerId: _manualWinnerId,
       expansionIds: _selectedExpansions.toList(),
+      commonScore: _selectedGame?.isCoopOrSolo == true ? int.tryParse(_commonScoreController.text) : null,
+      isVictory: _selectedGame?.isCoopOrSolo == true ? _isVictory : null,
     );
     if (widget.existingPlay != null) {
       await widget.repository.updatePlayRecord(record);
@@ -301,7 +309,37 @@ class _AddPlayPageState extends State<AddPlayPage> {
             ),
             const SizedBox(height: 16),
 
-            if (_selectedPlayers.isNotEmpty) ...[
+            if (_selectedGame?.isCoopOrSolo == true) ...[
+              const Divider(),
+              const Text('Shared Result', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                   Expanded(
+                    child: TextField(
+                      controller: _commonScoreController,
+                      decoration: const InputDecoration(
+                        labelText: 'Common Score',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.calculate),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Column(
+                    children: [
+                      const Text('Goal Reached?'),
+                      Switch(
+                        value: _isVictory,
+                        onChanged: (val) => setState(() => _isVictory = val),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ] else if (_selectedPlayers.isNotEmpty) ...[
               ..._selectedPlayers.map((player) {
                 final isWinner = _manualWinnerId == player.id;
                 return Padding(
@@ -351,6 +389,7 @@ class _AddPlayPageState extends State<AddPlayPage> {
   @override
   void dispose() {
     _durationController.dispose();
+    _commonScoreController.dispose();
     for (var c in _scoreControllers.values) {
       c.dispose();
     }

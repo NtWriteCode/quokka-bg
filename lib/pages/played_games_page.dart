@@ -175,7 +175,31 @@ class _PlayedGamesPageState extends State<PlayedGamesPage> {
                                       Text('Players: $playersText',
                                           style: const TextStyle(
                                               fontSize: 12, color: Colors.grey)),
-                                    if (play.winnerId != null) ...[
+                                    if (play.isVictory != null) ...[
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            play.isVictory! ? Icons.check_circle : Icons.cancel,
+                                            size: 14,
+                                            color: play.isVictory! ? Colors.green : Colors.red,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            play.isVictory! ? 'Goal Reached' : 'Goal Failed',
+                                            style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: play.isVictory! ? Colors.green : Colors.red),
+                                          ),
+                                          if (play.commonScore != null) ...[
+                                            const SizedBox(width: 8),
+                                            Text('Score: ${play.commonScore}',
+                                                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                          ],
+                                        ],
+                                      ),
+                                    ] else if (play.winnerId != null) ...[
                                       const SizedBox(height: 4),
                                       Row(
                                         children: [

@@ -36,6 +36,10 @@ class BoardGame {
 
   bool get isWishlist => status.isWishlist;
 
+  bool get isCooperative => mechanics.any((m) => m.toLowerCase().contains('cooperative'));
+  bool get isSolo => mechanics.contains('Solo game') || (minPlayers == 1 && maxPlayers == 1);
+  bool get isCoopOrSolo => isCooperative || isSolo;
+
   BoardGame({
     required this.id,
     required this.name,

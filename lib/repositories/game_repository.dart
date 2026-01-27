@@ -1315,6 +1315,10 @@ class GameRepository extends ChangeNotifier {
         final maxPlayTime = int.tryParse(item['maxplaytime']?.toString() ?? '');
         final minAge = int.tryParse(item['minage']?.toString() ?? '');
         
+        if (minPlayers == 1 && maxPlayers == 1 && !mechanics.contains('Solo game')) {
+          mechanics.add('Solo game');
+        }
+
         final stats = item['stats'];
         final avgRating = stats != null ? double.tryParse(stats['average']?.toString() ?? '') : null;
         
