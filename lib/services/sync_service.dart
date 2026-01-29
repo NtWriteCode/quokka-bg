@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:webdav_client/webdav_client.dart' as webdav;
 import 'package:quokka/models/leaderboard_entry.dart';
 import 'package:quokka/models/user_stats.dart';
+import 'package:quokka/models/sync_status.dart';
 
 class SyncSummary {
   final String displayName;
@@ -39,13 +41,56 @@ class SyncService {
   static const _keyUser = 'webdav_user';
   static const _keyPass = 'webdav_pass';
 
+  // Retry configuration
+  static const _maxRetries = 3;
+  static const _retryDelayMs = [500, 1000, 2000]; // Exponential backoff
+
+  /// Log a debug message (only in debug mode)
+  void _log(String message) {
+    if (kDebugMode) {
+      debugPrint('[SyncService] $message');
+    }
+  }
+
+  /// Execute an operation with retry logic
+  Future<T> _withRetry<T>(
+    Future<T> Function() operation, {
+    String operationName = 'operation',
+    int maxRetries = _maxRetries,
+  }) async {
+    Exception? lastError;
+    
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return await operation();
+      } on SocketException catch (e) {
+        lastError = e;
+        _log('$operationName failed (attempt ${attempt + 1}/$maxRetries): Network error - ${e.message}');
+      } on HttpException catch (e) {
+        lastError = e;
+        _log('$operationName failed (attempt ${attempt + 1}/$maxRetries): HTTP error - ${e.message}');
+      } catch (e) {
+        // Don't retry non-network errors
+        _log('$operationName failed (non-retryable): $e');
+        rethrow;
+      }
+      
+      if (attempt < maxRetries - 1) {
+        final delay = _retryDelayMs[attempt];
+        _log('Retrying $operationName in ${delay}ms...');
+        await Future.delayed(Duration(milliseconds: delay));
+      }
+    }
+    
+    throw lastError ?? Exception('$operationName failed after $maxRetries retries');
+  }
+
   Future<void> saveCredentials({
     required String url,
     required String user,
     required String pass,
   }) async {
-    // Ensure URL ends with slash for consistency if not present, though client handles path joining
-    // But for base URL it is safer to be clean.
+    // Ensure URL ends with slash for consistency
     var cleanUrl = url.trim();
     if (!cleanUrl.endsWith('/')) cleanUrl += '/';
     
@@ -85,6 +130,7 @@ class SyncService {
     final targetPass = pass ?? creds['pass'];
 
     if (targetUrl == null || targetUser == null || targetPass == null) {
+      if (logErrors) _log('Missing credentials for WebDAV connection');
       return null;
     }
 
@@ -97,7 +143,7 @@ class SyncService {
       );
       return client;
     } catch (e) {
-      if (logErrors) print('DEBUG: WebDAV Client creation failed: $e');
+      if (logErrors) _log('WebDAV Client creation failed: $e');
       return null;
     }
   }
@@ -115,20 +161,31 @@ class SyncService {
     int level = 1;
     String displayName = '';
 
-    Future<List<dynamic>?> _readList(String fileName) async {
+    Future<List<dynamic>?> readList(String fileName) async {
       try {
-        final content = await client.read('$_folderName/$fileName');
+        final content = await _withRetry(
+          () => client.read('$_folderName/$fileName'),
+          operationName: 'read $fileName',
+        );
         final json = jsonDecode(utf8.decode(content));
         if (json is List) {
           hasAny = true;
           return json;
         }
-      } catch (_) {}
+      } on FormatException catch (e) {
+        _log('JSON parse error for $fileName: $e');
+      } catch (e) {
+        // File might not exist, which is expected for new users
+        _log('Could not read $fileName: $e');
+      }
       return null;
     }
 
     try {
-      final statsContent = await client.read('$_folderName/user_stats.json');
+      final statsContent = await _withRetry(
+        () => client.read('$_folderName/user_stats.json'),
+        operationName: 'read user_stats',
+      );
       final json = jsonDecode(utf8.decode(statsContent));
       if (json is Map<String, dynamic>) {
         final stats = UserStats.fromJson(json);
@@ -138,13 +195,15 @@ class SyncService {
         displayName = stats.displayName;
         hasAny = true;
       }
-    } catch (_) {}
+    } catch (e) {
+      _log('Could not read user_stats.json: $e');
+    }
 
-    final gamesList = await _readList('games.json');
+    final gamesList = await readList('games.json');
     if (gamesList != null) games = gamesList.length;
-    final playsList = await _readList('plays.json');
+    final playsList = await readList('plays.json');
     if (playsList != null) plays = playsList.length;
-    final playersList = await _readList('players.json');
+    final playersList = await readList('players.json');
     if (playersList != null) players = playersList.length;
 
     return SyncSummary(
@@ -163,19 +222,34 @@ class SyncService {
     final client = await _connect(url: url, user: user, pass: pass);
     if (client == null) return 'Missing credentials or invalid URL format.';
     try {
-      await client.ping();
+      await _withRetry(
+        () => client.ping(),
+        operationName: 'ping',
+      );
       return null; // Success
     } catch (e) {
-      print('DEBUG: WebDAV Ping failed: $e');
+      _log('WebDAV Ping failed: $e');
       return e.toString();
     }
   }
 
-  /// Checks if remote version is newer than local.
-  /// Returns [true] if remote is newer and files were downloaded.
-  Future<bool> sync(Directory localDir, int localVersion, {bool allowUpload = false}) async {
+  /// Sync with the server. Returns a SyncLogEntry with detailed results.
+  Future<SyncLogEntry> sync(
+    Directory localDir,
+    int localVersion, {
+    bool allowUpload = false,
+    SyncTrigger trigger = SyncTrigger.autoCheck,
+  }) async {
+    final builder = SyncLogBuilder(
+      direction: SyncDirection.download,
+      trigger: trigger,
+      localVersionBefore: localVersion,
+    );
+
     final client = await _connect();
-    if (client == null) return false;
+    if (client == null) {
+      return builder.build(SyncResultType.noCredentials);
+    }
 
     try {
       // Ensure bg-tracker folder exists
@@ -188,36 +262,62 @@ class SyncService {
       // Check metadata
       int remoteVersion = 0;
       try {
-        final List<int> content = await client.read('$_folderName/$_metadataFile');
+        final List<int> content = await _withRetry(
+          () => client.read('$_folderName/$_metadataFile'),
+          operationName: 'read metadata',
+        );
         final json = jsonDecode(utf8.decode(content));
         remoteVersion = json['version'] ?? 0;
+        builder.remoteVersion = remoteVersion;
       } catch (e) {
         // Metadata doesn't exist or is invalid
+        _log('Metadata read failed (might not exist yet): $e');
         remoteVersion = 0;
       }
 
       if (remoteVersion > localVersion) {
-        // Download all JSONs
-        final files = ['games.json', 'players.json', 'plays.json', 'user_stats.json'];
+        // Download all JSONs INCLUDING metadata.json to keep versions in sync
+        final files = ['games.json', 'players.json', 'plays.json', 'user_stats.json', 'metadata.json'];
         for (final fileName in files) {
           try {
-            final content = await client.read('$_folderName/$fileName');
+            final content = await _withRetry(
+              () => client.read('$_folderName/$fileName'),
+              operationName: 'download $fileName',
+            );
             final localFile = File(p.join(localDir.path, fileName));
             await localFile.writeAsBytes(content);
+            builder.addSuccess(fileName);
           } catch (e) {
-            print('DEBUG: Failed to download $fileName: $e');
+            builder.addFailure(fileName);
+            builder.addWarning('Failed to download $fileName: $e');
+            _log('Failed to download $fileName: $e');
           }
         }
-        return true;
+
+        builder.localVersionAfter = remoteVersion;
+
+        if (builder.failedFiles.length == files.length) {
+          builder.addError('All file downloads failed');
+          return builder.build(SyncResultType.failure);
+        }
+
+        if (builder.failedFiles.isNotEmpty) {
+          return builder.build(SyncResultType.partial);
+        }
+
+        return builder.build(SyncResultType.success);
       } else if (localVersion > remoteVersion && allowUpload) {
         // Upload local files
-        await upload(localDir, localVersion);
+        return await upload(localDir, localVersion, trigger: trigger);
       }
-      
-      return false;
+
+      // Versions match, nothing to do
+      builder.localVersionAfter = localVersion;
+      return builder.build(SyncResultType.skipped);
     } catch (e) {
-      print('DEBUG: Sync failed: $e');
-      return false;
+      _log('Sync failed: $e');
+      builder.addError('Sync failed: $e');
+      return builder.build(SyncResultType.failure);
     }
   }
 
@@ -226,49 +326,103 @@ class SyncService {
     if (client == null) return null;
 
     try {
-      final List<int> content = await client.read('$_folderName/$_metadataFile');
+      final List<int> content = await _withRetry(
+        () => client.read('$_folderName/$_metadataFile'),
+        operationName: 'fetch remote version',
+      );
       final json = jsonDecode(utf8.decode(content));
       return json['version'] ?? 0;
-    } catch (_) {
+    } catch (e) {
+      _log('Could not fetch remote version: $e');
       return null;
     }
   }
 
-  Future<void> upload(Directory localDir, int version) async {
+  Future<SyncLogEntry> upload(
+    Directory localDir,
+    int version, {
+    SyncTrigger trigger = SyncTrigger.autoSave,
+  }) async {
+    final builder = SyncLogBuilder(
+      direction: SyncDirection.upload,
+      trigger: trigger,
+      localVersionBefore: version,
+    );
+
     final client = await _connect();
-    if (client == null) return;
+    if (client == null) {
+      return builder.build(SyncResultType.noCredentials);
+    }
 
     try {
-      // Ensure folder
+      // Ensure folder exists
       try { await client.mkdir(_folderName); } catch (_) {}
 
       final files = ['games.json', 'players.json', 'plays.json', 'user_stats.json'];
       for (final fileName in files) {
         final localFile = File(p.join(localDir.path, fileName));
         if (await localFile.exists()) {
-          final bytes = await localFile.readAsBytes();
-          await client.write('$_folderName/$fileName', bytes);
+          try {
+            final bytes = await localFile.readAsBytes();
+            await _withRetry(
+              () => client.write('$_folderName/$fileName', bytes),
+              operationName: 'upload $fileName',
+            );
+            builder.addSuccess(fileName);
+          } catch (e) {
+            builder.addFailure(fileName);
+            builder.addWarning('Failed to upload $fileName: $e');
+            _log('Failed to upload $fileName: $e');
+          }
         }
       }
 
-      // Update metadata
-      final meta = jsonEncode({'version': version, 'timestamp': DateTime.now().toIso8601String()});
-      await client.write('$_folderName/$_metadataFile', utf8.encode(meta));
-      
+      // Update metadata only if at least some files were uploaded
+      if (builder.successfulFiles.isNotEmpty) {
+        try {
+          final meta = jsonEncode({'version': version, 'timestamp': DateTime.now().toIso8601String()});
+          await _withRetry(
+            () => client.write('$_folderName/$_metadataFile', utf8.encode(meta)),
+            operationName: 'upload metadata',
+          );
+          builder.addSuccess('metadata.json');
+        } catch (e) {
+          builder.addWarning('Failed to update metadata: $e');
+          _log('Failed to update metadata: $e');
+        }
+      }
+
+      builder.localVersionAfter = version;
+
+      if (builder.failedFiles.length == files.length) {
+        builder.addError('All file uploads failed');
+        return builder.build(SyncResultType.failure);
+      }
+
+      if (builder.failedFiles.isNotEmpty) {
+        return builder.build(SyncResultType.partial);
+      }
+
+      return builder.build(SyncResultType.success);
     } catch (e) {
-      print('DEBUG: Upload failed: $e');
+      _log('Upload failed: $e');
+      builder.addError('Upload failed: $e');
+      return builder.build(SyncResultType.failure);
     }
   }
 
   /// Check if leaderboard feature is enabled on the server
-  /// Returns true if /global_shared exists (feature enabled server-side)
   Future<bool> isLeaderboardEnabled() async {
     final client = await _connect(logErrors: false);
     if (client == null) return false;
 
     try {
       // Check if global_shared folder exists (this indicates feature is enabled)
-      await client.readDir('global_shared');
+      await _withRetry(
+        () => client.readDir('global_shared'),
+        operationName: 'check leaderboard folder',
+        maxRetries: 1, // Don't retry much for feature detection
+      );
       
       // If it exists, ensure our subfolders are created
       try { await client.mkdir(_globalSharedFolder); } catch (_) {}
@@ -276,6 +430,7 @@ class SyncService {
       
       return true;
     } catch (e) {
+      _log('Leaderboard not enabled or not accessible: $e');
       return false;
     }
   }
@@ -293,9 +448,12 @@ class SyncService {
 
       final fileName = 'user_${entry.userId}.json';
       final json = jsonEncode(entry.toJson());
-      await client.write('$_leaderboardFolder/$fileName', utf8.encode(json));
+      await _withRetry(
+        () => client.write('$_leaderboardFolder/$fileName', utf8.encode(json)),
+        operationName: 'upload leaderboard entry',
+      );
     } catch (e) {
-      print('DEBUG: Leaderboard upload failed: $e');
+      _log('Leaderboard upload failed: $e');
     }
   }
 
@@ -305,24 +463,31 @@ class SyncService {
     if (client == null) return [];
 
     try {
-      final files = await client.readDir(_leaderboardFolder);
+      final files = await _withRetry(
+        () => client.readDir(_leaderboardFolder),
+        operationName: 'list leaderboard',
+      );
       final entries = <LeaderboardEntry>[];
 
       for (final file in files) {
         if (file.name?.endsWith('.json') ?? false) {
           try {
-            final content = await client.read('$_leaderboardFolder/${file.name}');
+            final content = await _withRetry(
+              () => client.read('$_leaderboardFolder/${file.name}'),
+              operationName: 'read leaderboard entry ${file.name}',
+              maxRetries: 2,
+            );
             final json = jsonDecode(utf8.decode(content));
             entries.add(LeaderboardEntry.fromJson(json));
           } catch (e) {
-            print('DEBUG: Failed to parse leaderboard entry ${file.name}: $e');
+            _log('Failed to parse leaderboard entry ${file.name}: $e');
           }
         }
       }
 
       return entries;
     } catch (e) {
-      print('DEBUG: Leaderboard download failed: $e');
+      _log('Leaderboard download failed: $e');
       return [];
     }
   }

@@ -9,6 +9,7 @@ import 'package:quokka/models/play_record.dart';
 import 'package:quokka/models/player.dart';
 import 'package:quokka/models/user_stats.dart';
 import 'package:quokka/models/leaderboard_entry.dart';
+import 'package:quokka/models/sync_status.dart';
 import 'package:quokka/services/sync_service.dart';
 import 'package:quokka/services/achievement_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -30,11 +31,46 @@ class GameRepository extends ChangeNotifier {
   Stream<Map<String, SyncSummary>> get onSyncConsent => _syncConsentController.stream;
   Completer<bool>? _syncConsentCompleter;
 
+  // Sync status and history tracking
+  final _syncLock = AsyncLock();
+  final _syncHistory = SyncHistoryManager();
+  final StreamController<SyncLogEntry> _syncStatusController = StreamController.broadcast();
+  Stream<SyncLogEntry> get onSyncStatusChanged => _syncStatusController.stream;
+  SyncLogEntry? get lastSyncEntry => _syncHistory.lastEntry;
+  SyncHistoryManager get syncHistory => _syncHistory;
+
+  Future<void> _loadSyncHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final json = prefs.getString('sync_history');
+    _syncHistory.loadFromJson(json);
+  }
+
+  Future<void> _saveSyncHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('sync_history', _syncHistory.toJson());
+  }
+
+  void _recordSyncEntry(SyncLogEntry entry) {
+    _syncHistory.addEntry(entry);
+    _syncStatusController.add(entry);
+    _saveSyncHistory(); // Fire and forget
+  }
+
   int get dataVersion => _dataVersion;
   Future<int?> fetchRemoteVersion() => _syncService.fetchRemoteVersion();
   Future<bool> hasSyncCredentials() => _syncService.hasCredentials();
 
   SyncSummary _buildLocalSummary() {
+    // More comprehensive check for meaningful data
+    final hasGames = _ownedGames.isNotEmpty;
+    final hasPlays = _playRecords.isNotEmpty;
+    final hasPlayers = _players.isNotEmpty;
+    final hasProgress = _userStats.level > 1 || _userStats.totalXp > 0;
+    final hasAchievements = _userStats.unlockedAchievementIds.isNotEmpty;
+    final hasCustomization = _userStats.displayName.isNotEmpty ||
+        _userStats.selectedAchievementTitleId != null ||
+        _userStats.customBackgroundTier != null;
+    
     return SyncSummary(
       displayName: _userStats.displayName,
       level: _userStats.level,
@@ -43,12 +79,7 @@ class GameRepository extends ChangeNotifier {
       games: _ownedGames.length,
       plays: _playRecords.length,
       players: _players.length,
-      hasData: _userStats.level > 1 ||
-          _userStats.totalXp > 0 ||
-          _userStats.unlockedAchievementIds.isNotEmpty ||
-          _ownedGames.isNotEmpty ||
-          _playRecords.isNotEmpty ||
-          _players.isNotEmpty,
+      hasData: hasGames || hasPlays || hasPlayers || hasProgress || hasAchievements || hasCustomization,
     );
   }
 
@@ -70,7 +101,11 @@ class GameRepository extends ChangeNotifier {
   }
 
   void resolveSyncConsent(bool allow) {
-    _syncConsentCompleter?.complete(allow);
+    // Prevent double-tap crash by checking if completer is already completed
+    final completer = _syncConsentCompleter;
+    if (completer != null && !completer.isCompleted) {
+      completer.complete(allow);
+    }
   }
 
   Future<bool> _canUploadBasedOnStats() async {
@@ -860,17 +895,36 @@ class GameRepository extends ChangeNotifier {
     try {
       await loadSettings();
       await _loadLocalVersion();
+      await _loadSyncHistory();
       final directory = await getApplicationDocumentsDirectory();
       
-      // Attempt Sync Down before logic
-      try {
-        final downloaded = await _syncService.sync(directory, _dataVersion);
-        if (downloaded) {
-          await _loadLocalVersion(); // Reload version from the downloaded metadata.json
+      // Attempt Sync Down before logic (with mutex protection)
+      await _syncLock.synchronized(() async {
+        try {
+          final entry = await _syncService.sync(
+            directory,
+            _dataVersion,
+            trigger: SyncTrigger.appStart,
+          );
+          _recordSyncEntry(entry);
+          if (entry.isSuccess && entry.filesDownloaded > 0) {
+            await _loadLocalVersion(); // Reload version from the downloaded metadata.json
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('Sync failed during load: $e');
+          }
+          final errorEntry = SyncLogEntry(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            timestamp: DateTime.now(),
+            direction: SyncDirection.download,
+            resultType: SyncResultType.failure,
+            trigger: SyncTrigger.appStart,
+            errors: ['Sync failed during load: $e'],
+          );
+          _recordSyncEntry(errorEntry);
         }
-      } catch (e) {
-        print('DEBUG: Sync failed during load: $e');
-      }
+      });
 
       final file = await _localFile;
       if (!await file.exists()) {
@@ -898,10 +952,14 @@ class GameRepository extends ChangeNotifier {
           await uploadLeaderboardEntry();
         }
       } catch (e) {
-        print('DEBUG: Leaderboard upload after load failed: $e');
+        if (kDebugMode) {
+          debugPrint('Leaderboard upload after load failed: $e');
+        }
       }
     } catch (e) {
-      print('DEBUG: Error loading games: $e');
+      if (kDebugMode) {
+        debugPrint('Error loading games: $e');
+      }
       _ownedGames = [];
     }
   }
@@ -974,65 +1032,82 @@ class GameRepository extends ChangeNotifier {
       final canUpload = await _canUploadBasedOnStats();
       if (!canUpload) return;
     }
-    final directory = await getApplicationDocumentsDirectory();
-    await _syncService.upload(directory, _dataVersion);
     
-    // Also upload leaderboard entry if enabled
-    final leaderboardEnabled = await _syncService.isLeaderboardEnabled();
-    if (leaderboardEnabled && _userStats.level >= 3) {
-      await uploadLeaderboardEntry();
-    }
+    await _syncLock.synchronized(() async {
+      final directory = await getApplicationDocumentsDirectory();
+      final entry = await _syncService.upload(
+        directory,
+        _dataVersion,
+        trigger: SyncTrigger.manualUpload,
+      );
+      _recordSyncEntry(entry);
+      
+      // Also upload leaderboard entry if enabled
+      final leaderboardEnabled = await _syncService.isLeaderboardEnabled();
+      if (leaderboardEnabled && _userStats.level >= 3) {
+        await uploadLeaderboardEntry();
+      }
+    });
   }
 
   @override
   void dispose() {
     _unlockedController.close();
     _levelUpController.close();
+    _syncConsentController.close();
+    _syncStatusController.close();
     super.dispose();
   }
 
   Future<void> _preSaveSync() async {
-    final directory = await getApplicationDocumentsDirectory();
-    final downloaded = await _syncService.sync(directory, _dataVersion);
-    if (downloaded) {
-      // Reload everything from disk to memory
-      final file = await _localFile;
-      if (await file.exists()) {
-        final contents = await file.readAsString();
-        final List<dynamic> jsonList = jsonDecode(contents);
-        _ownedGames = jsonList.map((e) => BoardGame.fromJson(e)).toList();
+    await _syncLock.synchronized(() async {
+      final directory = await getApplicationDocumentsDirectory();
+      final entry = await _syncService.sync(
+        directory,
+        _dataVersion,
+        trigger: SyncTrigger.autoCheck,
+      );
+      _recordSyncEntry(entry);
+      
+      if (entry.isSuccess && entry.filesDownloaded > 0) {
+        // Reload everything from disk to memory
+        final file = await _localFile;
+        if (await file.exists()) {
+          final contents = await file.readAsString();
+          final List<dynamic> jsonList = jsonDecode(contents);
+          _ownedGames = jsonList.map((e) => BoardGame.fromJson(e)).toList();
+        }
+        await loadPlayers();
+        await loadPlays();
+        await loadUserStats();
+        await _loadLocalVersion();
+        notifyListeners();
       }
-      await loadPlayers();
-      await loadPlays();
-      await loadUserStats();
-      await _loadLocalVersion();
-      notifyListeners();
-    }
+    });
   }
 
   Future<void> _postSaveSync() async {
-    _dataVersion++;
-    await _saveLocalVersion();
-    final directory = await getApplicationDocumentsDirectory();
-    
-    // Upload all JSONs including user_stats
-    final files = ['games.json', 'players.json', 'plays.json', 'user_stats.json'];
-    for (final fileName in files) {
-      final file = File('${directory.path}/$fileName');
-      if (await file.exists()) {
-        // This is handled by sync service upload typically, but let's ensure upload() takes all
+    await _syncLock.synchronized(() async {
+      _dataVersion++;
+      await _saveLocalVersion();
+      final directory = await getApplicationDocumentsDirectory();
+      
+      final canUpload = await _canUploadBasedOnStats();
+      if (canUpload) {
+        final entry = await _syncService.upload(
+          directory,
+          _dataVersion,
+          trigger: SyncTrigger.autoSave,
+        );
+        _recordSyncEntry(entry);
       }
-    }
-    final canUpload = await _canUploadBasedOnStats();
-    if (canUpload) {
-      await _syncService.upload(directory, _dataVersion);
-    }
-    
-    // Also upload leaderboard entry if enabled
-    final leaderboardEnabled = await _syncService.isLeaderboardEnabled();
-    if (leaderboardEnabled && _userStats.level >= 3) {
-      await uploadLeaderboardEntry();
-    }
+      
+      // Also upload leaderboard entry if enabled
+      final leaderboardEnabled = await _syncService.isLeaderboardEnabled();
+      if (leaderboardEnabled && _userStats.level >= 3) {
+        await uploadLeaderboardEntry();
+      }
+    });
   }
 
   Future<void> saveGames() async {

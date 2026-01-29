@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:quokka/repositories/game_repository.dart';
 import 'package:quokka/services/sync_service.dart';
+import 'package:quokka/widgets/sync_status_indicator.dart';
 
 class SettingsPage extends StatefulWidget {
   final GameRepository repository;
@@ -858,7 +859,13 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Authenticated with WebDAV', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Row(
+                        children: [
+                          const Text('Authenticated with WebDAV', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 8),
+                          SyncStatusIndicator(repository: widget.repository, size: 10),
+                        ],
+                      ),
                       Text(_urlController.text,
                           style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                           overflow: TextOverflow.ellipsis),
@@ -868,6 +875,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            // Sync status badge (tappable for history)
+            SyncStatusBadge(repository: widget.repository),
             const Divider(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
