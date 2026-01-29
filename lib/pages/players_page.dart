@@ -66,7 +66,7 @@ class _PlayersPageState extends State<PlayersPage> {
                   spacing: 8,
                   runSpacing: 8,
                   children: Colors.primaries.map((color) {
-                    final isSelected = selectedColor.value == color.value;
+                    final isSelected = selectedColor.toARGB32() == color.toARGB32();
                     return GestureDetector(
                       onTap: () => setDialogState(() => selectedColor = color),
                       child: Container(
@@ -79,7 +79,7 @@ class _PlayersPageState extends State<PlayersPage> {
                               ? Border.all(color: Colors.black, width: 3)
                               : null,
                           boxShadow: isSelected
-                              ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 8, spreadRadius: 2)]
+                              ? [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 8, spreadRadius: 2)]
                               : null,
                         ),
                       ),
@@ -110,7 +110,7 @@ class _PlayersPageState extends State<PlayersPage> {
                 final newPlayer = Player(
                   id: DateTime.now().millisecondsSinceEpoch.toString(),
                   name: name,
-                  colorValue: selectedColor.value,
+                  colorValue: selectedColor.toARGB32(),
                 );
 
                 await widget.repository.addPlayer(newPlayer);

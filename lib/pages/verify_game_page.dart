@@ -437,9 +437,9 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.05),
+                        color: Colors.blue.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                        border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -579,7 +579,7 @@ class _VerifyGamePageState extends State<VerifyGamePage> {
                         runSpacing: 4,
                         children: game.mechanics.map((m) => Chip(
                           label: Text(m, style: const TextStyle(fontSize: 12)),
-                          backgroundColor: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.3),
+                          backgroundColor: Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.3),
                           visualDensity: VisualDensity.compact,
                         )).toList(),
                       ),

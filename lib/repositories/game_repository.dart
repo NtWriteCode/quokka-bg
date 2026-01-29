@@ -1095,7 +1095,7 @@ class GameRepository extends ChangeNotifier {
       final List<dynamic> jsonList = jsonDecode(contents);
       _players = jsonList.map((e) => Player.fromJson(e)).toList();
     } catch (e) {
-      print('DEBUG: Error loading players: $e');
+      debugPrint('Error loading players: $e');
       _players = [];
     }
   }
@@ -1111,7 +1111,7 @@ class GameRepository extends ChangeNotifier {
       final List<dynamic> jsonList = jsonDecode(contents);
       _playRecords = jsonList.map((e) => PlayRecord.fromJson(e)).toList();
     } catch (e) {
-      print('DEBUG: Error loading plays: $e');
+      debugPrint('Error loading plays: $e');
       _playRecords = [];
     }
   }
@@ -1126,7 +1126,7 @@ class GameRepository extends ChangeNotifier {
       final contents = await file.readAsString();
       _userStats = UserStats.fromJson(jsonDecode(contents));
     } catch (e) {
-      print('DEBUG: Error loading stats: $e');
+      debugPrint('Error loading stats: $e');
       _userStats = UserStats();
     }
   }
@@ -1539,12 +1539,12 @@ class GameRepository extends ChangeNotifier {
              try {
                final data = jsonDecode(jsonString);
                if (data is Map<String, dynamic>) {
-                 _detailsCache[gameId] = data;
-                 return data;
-               }
-             } catch (e) {
-               print('DEBUG: JSON Decode Error: $e');
-             }
+                _detailsCache[gameId] = data;
+                return data;
+              }
+            } catch (e) {
+              debugPrint('JSON Decode Error: $e');
+            }
           }
         }
       }
@@ -2033,15 +2033,5 @@ class GameRepository extends ChangeNotifier {
       (g.status == GameStatus.owned || g.status == GameStatus.lended) && 
       g.mechanics.contains(mechanic)
     ).length;
-  }
-
-  int _countDistinctMechanics() {
-    final mechs = <String>{};
-    for (final g in _ownedGames) {
-      if (g.status == GameStatus.owned || g.status == GameStatus.lended) {
-        mechs.addAll(g.mechanics);
-      }
-    }
-    return mechs.length;
   }
 }

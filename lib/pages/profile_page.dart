@@ -89,7 +89,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   spacing: 8,
                   runSpacing: 8,
                   children: Colors.primaries.map((color) {
-                    final isSelected = selectedColor.value == color.value;
+                    final isSelected = selectedColor == color;
                     return GestureDetector(
                       onTap: () => setDialogState(() => selectedColor = color),
                       child: Container(
@@ -129,7 +129,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 final newPlayer = Player(
                   id: DateTime.now().millisecondsSinceEpoch.toString(),
                   name: name,
-                  colorValue: selectedColor.value,
+                  colorValue: selectedColor.toARGB32(),
                 );
 
                 await widget.repository.addPlayer(newPlayer);
@@ -170,7 +170,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   spacing: 8,
                   runSpacing: 8,
                   children: Colors.primaries.map((color) {
-                    final isSelected = selectedColor.value == color.value;
+                    final isSelected = selectedColor == color;
                     return GestureDetector(
                       onTap: () => setDialogState(() => selectedColor = color),
                       child: Container(
@@ -226,7 +226,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 final updatedPlayer = Player(
                   id: player.id,
                   name: name,
-                  colorValue: selectedColor.value,
+                  colorValue: selectedColor.toARGB32(),
                 );
 
                 await widget.repository.updatePlayer(updatedPlayer);
@@ -318,12 +318,12 @@ class _ProfilePageState extends State<ProfilePage> {
     if (effects.glowEnabled) {
       borderShadows.addAll([
         BoxShadow(
-          color: Colors.white.withOpacity((0.5 * effects.glowIntensity).clamp(0.0, 1.0)),
+          color: Colors.white.withValues(alpha: (0.5 * effects.glowIntensity).clamp(0.0, 1.0)),
           blurRadius: 30 * effects.glowIntensity,
           spreadRadius: 8 * effects.glowIntensity,
         ),
         BoxShadow(
-          color: Colors.white.withOpacity((0.3 * effects.glowIntensity).clamp(0.0, 1.0)),
+          color: Colors.white.withValues(alpha: (0.3 * effects.glowIntensity).clamp(0.0, 1.0)),
           blurRadius: 50 * effects.glowIntensity,
           spreadRadius: 15 * effects.glowIntensity,
         ),
@@ -334,7 +334,7 @@ class _ProfilePageState extends State<ProfilePage> {
       borderRadius: BorderRadius.circular(16),
       border: effects.glowEnabled 
           ? Border.all(
-              color: Colors.white.withOpacity((0.7 * effects.glowIntensity).clamp(0.0, 1.0)),
+              color: Colors.white.withValues(alpha: (0.7 * effects.glowIntensity).clamp(0.0, 1.0)),
               width: 3 * effects.glowIntensity,
             )
           : null,
@@ -351,17 +351,17 @@ class _ProfilePageState extends State<ProfilePage> {
             // No border - just pure glow effect
             boxShadow: [
               BoxShadow(
-                color: glowColor.withOpacity((0.6 * effects.glowIntensity).clamp(0.0, 1.0)),
+                color: glowColor.withValues(alpha: (0.6 * effects.glowIntensity).clamp(0.0, 1.0)),
                 blurRadius: 20 * effects.glowIntensity,
                 spreadRadius: 5 * effects.glowIntensity,
               ),
               BoxShadow(
-                color: glowColor.withOpacity((0.4 * effects.glowIntensity).clamp(0.0, 1.0)),
+                color: glowColor.withValues(alpha: (0.4 * effects.glowIntensity).clamp(0.0, 1.0)),
                 blurRadius: 40 * effects.glowIntensity,
                 spreadRadius: 10 * effects.glowIntensity,
               ),
               BoxShadow(
-                color: glowColor.withOpacity((0.3 * effects.glowIntensity).clamp(0.0, 1.0)),
+                color: glowColor.withValues(alpha: (0.3 * effects.glowIntensity).clamp(0.0, 1.0)),
                 blurRadius: 60 * effects.glowIntensity,
                 spreadRadius: 15 * effects.glowIntensity,
               ),
@@ -413,7 +413,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   key: _infoButtonKey,
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -430,7 +430,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -469,7 +469,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 const SizedBox(height: 16),
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.3),
+                    color: Colors.white.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: ClipRRect(
@@ -547,7 +547,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       height: 20,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(10),
       ),
       child: ClipRRect(
@@ -567,7 +567,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ? [Colors.orange.shade400, Colors.deepOrange.shade600]
                         : isPartial
                             ? [Colors.orange.shade300, Colors.orange.shade100]
-                            : [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.1)],
+                            : [Colors.white.withValues(alpha: 0.1), Colors.white.withValues(alpha: 0.1)],
                   ),
                 ),
                 child: isActive
@@ -737,7 +737,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   opacity: isUnlocked ? 1.0 : 0.5,
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: isUnlocked ? tierColor.withOpacity(0.1) : Colors.grey[200],
+                      backgroundColor: isUnlocked ? tierColor.withValues(alpha: 0.1) : Colors.grey[200],
                       child: Icon(
                         isUnlocked ? Icons.emoji_events : Icons.lock_outline,
                         color: isUnlocked ? tierColor : Colors.grey[400],
@@ -1293,7 +1293,7 @@ class _CustomizationDialogState extends State<_CustomizationDialog> with SingleT
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.6),
+                                  color: Colors.black.withValues(alpha: 0.6),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -1677,7 +1677,7 @@ class _CustomizationDialogState extends State<_CustomizationDialog> with SingleT
                     ),
                     boxShadow: isSelected ? [
                       BoxShadow(
-                        color: color.withOpacity(0.5),
+                        color: color.withValues(alpha: 0.5),
                         blurRadius: 8,
                         spreadRadius: 2,
                       ),

@@ -146,7 +146,7 @@ class _ParticlePainter extends CustomPainter {
         final y = particle.y * size.height + math.sin(time * 4 * math.pi) * 30;
         
         final paint = Paint()
-          ..color = color.withOpacity(particle.opacity)
+          ..color = color.withValues(alpha: particle.opacity)
           ..style = PaintingStyle.fill;
         
         _drawFirefly(canvas, Offset(x, y), particle.size, paint, time);
@@ -169,7 +169,7 @@ class _ParticlePainter extends CustomPainter {
           final y = startY + (starProgress * distance); // Move down
           
           final paint = Paint()
-            ..color = color.withOpacity(particle.opacity)
+            ..color = color.withValues(alpha: particle.opacity)
             ..style = PaintingStyle.fill;
           
           _drawShootingStar(canvas, Offset(x, y), particle.size, paint, starProgress);
@@ -184,7 +184,7 @@ class _ParticlePainter extends CustomPainter {
         final finalX = x + drift;
         
         final paint = Paint()
-          ..color = color.withOpacity(particle.opacity)
+          ..color = color.withValues(alpha: particle.opacity)
           ..style = PaintingStyle.fill;
 
         switch (particleType) {
@@ -205,11 +205,11 @@ class _ParticlePainter extends CustomPainter {
   void _drawEmber(Canvas canvas, Offset position, double size, Paint paint) {
     // Draw glowing ember
     final glowPaint = Paint()
-      ..color = Colors.orange.withOpacity(0.3)
+      ..color = Colors.orange.withValues(alpha: 0.3)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
     
     canvas.drawCircle(position, size * 1.5, glowPaint);
-    canvas.drawCircle(position, size, paint..color = Colors.orange.withOpacity(paint.color.opacity));
+    canvas.drawCircle(position, size, paint..color = Colors.orange.withValues(alpha: paint.color.a));
   }
 
   void _drawFirefly(Canvas canvas, Offset position, double size, Paint paint, double phase) {
@@ -231,7 +231,7 @@ class _ParticlePainter extends CustomPainter {
     
     // Draw trailing glow (elongated in movement direction)
     final trailPaint = Paint()
-      ..color = Colors.yellowAccent.withOpacity(0.2 * blinkOpacity)
+      ..color = Colors.yellowAccent.withValues(alpha: 0.2 * blinkOpacity)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
     
     canvas.drawOval(
@@ -241,19 +241,19 @@ class _ParticlePainter extends CustomPainter {
     
     // Draw outer glow
     final glowPaint = Paint()
-      ..color = Colors.yellow.withOpacity(0.5 * blinkOpacity)
+      ..color = Colors.yellow.withValues(alpha: 0.5 * blinkOpacity)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
     
     canvas.drawCircle(position, size * 2.5, glowPaint);
     
     // Draw bright center with greenish tint (like real fireflies)
     final centerPaint = Paint()
-      ..color = Color.lerp(Colors.yellow, Colors.greenAccent, 0.3)!.withOpacity(1.0 * blinkOpacity);
+      ..color = Color.lerp(Colors.yellow, Colors.greenAccent, 0.3)!.withValues(alpha: 1.0 * blinkOpacity);
     canvas.drawCircle(position, size, centerPaint);
     
     // Draw very bright core
     final corePaint = Paint()
-      ..color = Colors.white.withOpacity(0.8 * blinkOpacity);
+      ..color = Colors.white.withValues(alpha: 0.8 * blinkOpacity);
     canvas.drawCircle(position, size * 0.4, corePaint);
   }
 
@@ -281,9 +281,9 @@ class _ParticlePainter extends CustomPainter {
       begin: Alignment.topRight,
       end: Alignment.bottomLeft,
       colors: [
-        Colors.yellow.withOpacity(0.0),
-        Colors.yellow.withOpacity(0.4 * fadeOpacity),
-        Colors.amber.withOpacity(0.7 * fadeOpacity),
+        Colors.yellow.withValues(alpha: 0.0),
+        Colors.yellow.withValues(alpha: 0.4 * fadeOpacity),
+        Colors.amber.withValues(alpha: 0.7 * fadeOpacity),
       ],
       stops: const [0.0, 0.4, 1.0],
     ).createShader(trailRect);
@@ -303,7 +303,7 @@ class _ParticlePainter extends CustomPainter {
     
     // Draw bright glow at the star head
     final glowPaint = Paint()
-      ..color = Colors.amber.withOpacity(0.4 * fadeOpacity)
+      ..color = Colors.amber.withValues(alpha: 0.4 * fadeOpacity)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
     canvas.drawCircle(position, size * 4, glowPaint);
     
@@ -330,13 +330,13 @@ class _ParticlePainter extends CustomPainter {
     
     // Draw the yellow star
     final starPaint = Paint()
-      ..color = Colors.yellow.withOpacity(fadeOpacity)
+      ..color = Colors.yellow.withValues(alpha: fadeOpacity)
       ..style = PaintingStyle.fill;
     canvas.drawPath(starPath, starPaint);
     
     // Draw very bright white core (smaller circle in center)
     final corePaint = Paint()
-      ..color = Colors.white.withOpacity(0.9 * fadeOpacity);
+      ..color = Colors.white.withValues(alpha: 0.9 * fadeOpacity);
     canvas.drawCircle(position, size * 0.6, corePaint);
   }
 
@@ -364,7 +364,7 @@ class _ParticlePainter extends CustomPainter {
     final gradient = RadialGradient(
       colors: [
         paint.color,
-        paint.color.withOpacity(0.0),
+        paint.color.withValues(alpha: 0.0),
       ],
     );
     

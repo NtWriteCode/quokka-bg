@@ -485,7 +485,7 @@ class _SettingsPageState extends State<SettingsPage> {
       builder: (context) {
         return PopScope(
           canPop: false,
-          onPopInvoked: (didPop) {
+          onPopInvokedWithResult: (didPop, result) {
             if (didPop) return;
             isCancelled = true;
           },
@@ -842,10 +842,10 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _buildActiveSyncCard() {
     return Card(
       elevation: 0,
-      color: Colors.green.withOpacity(0.05),
+      color: Colors.green.withValues(alpha: 0.05),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.green.withOpacity(0.2)),
+        side: BorderSide(color: Colors.green.withValues(alpha: 0.2)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),

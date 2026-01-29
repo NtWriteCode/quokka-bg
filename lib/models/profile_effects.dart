@@ -163,13 +163,13 @@ class ProfileEffects {
         'animatedGradientEnabled': animatedGradientEnabled,
         'glowEnabled': glowEnabled,
         'glowIntensity': glowIntensity,
-        'glowColor': glowColor?.value,
+        'glowColor': glowColor?.toARGB32(),
         'pulseEnabled': pulseEnabled,
         'pulseSpeed': pulseSpeed,
         'particlesEnabled': particlesEnabled,
         'particleType': particleType,
         'particleDensity': particleDensity,
-        'particleColor': particleColor?.value,
+        'particleColor': particleColor?.toARGB32(),
       };
 
   factory ProfileEffects.fromJson(Map<String, dynamic> json) => ProfileEffects(

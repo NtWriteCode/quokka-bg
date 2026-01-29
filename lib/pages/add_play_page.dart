@@ -302,7 +302,7 @@ class _AddPlayPageState extends State<AddPlayPage> {
                 return FilterChip(
                   label: Text(player.name),
                   selected: isSelected,
-                  selectedColor: Color(player.colorValue).withOpacity(0.3),
+                  selectedColor: Color(player.colorValue).withValues(alpha: 0.3),
                   onSelected: (val) => _onPlayerToggle(player, val),
                 );
               }).toList(),
@@ -473,7 +473,7 @@ class _GamePickerSheetState extends State<_GamePickerSheet> {
                         contentPadding: const EdgeInsets.symmetric(vertical: 8),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
                         filled: true,
-                        fillColor: Colors.grey.withOpacity(0.1),
+                        fillColor: Colors.grey.withValues(alpha: 0.1),
                       ),
                       onChanged: (val) {
                         setState(() => _query = val);

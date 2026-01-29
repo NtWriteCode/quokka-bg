@@ -267,7 +267,7 @@ class _GamesListPageState extends State<GamesListPage> {
             Text(
               'Played ${widget.repository.getPlayCountForGame(game.id)} times',
               style: TextStyle(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
               ),

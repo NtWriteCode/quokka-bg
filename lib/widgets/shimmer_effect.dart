@@ -77,9 +77,9 @@ class _ShimmerPainter extends CustomPainter {
         end: Alignment.bottomRight,
         colors: [
           Colors.transparent,
-          Colors.white.withOpacity(0.1),
-          Colors.white.withOpacity(0.3),
-          Colors.white.withOpacity(0.1),
+          Colors.white.withValues(alpha: 0.1),
+          Colors.white.withValues(alpha: 0.3),
+          Colors.white.withValues(alpha: 0.1),
           Colors.transparent,
         ],
         stops: const [0.0, 0.3, 0.5, 0.7, 1.0],

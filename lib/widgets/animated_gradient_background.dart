@@ -82,9 +82,9 @@ class _AnimatedGradientBackgroundState extends State<AnimatedGradientBackground>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      Colors.white.withOpacity(0.0),
-                      Colors.white.withOpacity(0.15 * (1 - t)),
-                      Colors.white.withOpacity(0.0),
+                      Colors.white.withValues(alpha: 0.0),
+                      Colors.white.withValues(alpha: 0.15 * (1 - t)),
+                      Colors.white.withValues(alpha: 0.0),
                     ],
                     begin: begin,
                     end: end,

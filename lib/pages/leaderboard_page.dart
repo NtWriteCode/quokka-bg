@@ -317,17 +317,17 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: glowColor.withOpacity((0.6 * effects.glowIntensity).clamp(0.0, 1.0)),
+                color: glowColor.withValues(alpha: (0.6 * effects.glowIntensity).clamp(0.0, 1.0)),
                 blurRadius: 20 * effects.glowIntensity,
                 spreadRadius: 5 * effects.glowIntensity,
               ),
               BoxShadow(
-                color: glowColor.withOpacity((0.4 * effects.glowIntensity).clamp(0.0, 1.0)),
+                color: glowColor.withValues(alpha: (0.4 * effects.glowIntensity).clamp(0.0, 1.0)),
                 blurRadius: 40 * effects.glowIntensity,
                 spreadRadius: 10 * effects.glowIntensity,
               ),
               BoxShadow(
-                color: glowColor.withOpacity((0.3 * effects.glowIntensity).clamp(0.0, 1.0)),
+                color: glowColor.withValues(alpha: (0.3 * effects.glowIntensity).clamp(0.0, 1.0)),
                 blurRadius: 60 * effects.glowIntensity,
                 spreadRadius: 15 * effects.glowIntensity,
               ),
@@ -427,7 +427,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                             title,
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withValues(alpha: 0.9),
                               fontStyle: FontStyle.italic,
                             ),
                           ),
@@ -443,7 +443,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
+                                  color: Colors.white.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -499,8 +499,11 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
     String rankDisplay = '#$rank';
     if (rank == 1) {
       rankDisplay = '🥇 #1';
-    } else if (rank == 2) rankDisplay = '🥈 #2';
-    else if (rank == 3) rankDisplay = '🥉 #3';
+    } else if (rank == 2) {
+      rankDisplay = '🥈 #2';
+    } else if (rank == 3) {
+      rankDisplay = '🥉 #3';
+    }
 
     showDialog(
       context: context,
@@ -543,7 +546,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontStyle: FontStyle.italic,
-                                      color: Colors.white.withOpacity(0.9),
+                                      color: Colors.white.withValues(alpha: 0.9),
                                     ),
                                   ),
                                 ],
@@ -598,7 +601,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                         'Background: $backgroundTierName',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                         ),
                       ),
                     ],

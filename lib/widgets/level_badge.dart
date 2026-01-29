@@ -64,7 +64,7 @@ class LevelBadge extends StatelessWidget {
       // Default circle avatar
       return CircleAvatar(
         radius: size / 2,
-        backgroundColor: Colors.white.withOpacity(0.3),
+        backgroundColor: Colors.white.withValues(alpha: 0.3),
         child: Text(
           '$level',
           style: TextStyle(
