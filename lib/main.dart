@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'pages/played_games_page.dart';
@@ -11,6 +10,7 @@ import 'widgets/level_up_dialog.dart';
 import 'repositories/game_repository.dart';
 import 'services/sync_service.dart';
 import 'widgets/main_scaffold.dart';
+import 'models/sync_status.dart';
 
 void main() {
   runApp(const QuokkaApp());
@@ -45,11 +45,8 @@ class RootPage extends StatefulWidget {
 class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   late GameRepository _repository;
-  bool _isAutoSyncing = false;
-  Timer? _syncCheckTimer;
-  bool _isSyncCheckRunning = false;
-  bool _syncPromptVisible = false;
-  int? _lastPromptedRemoteVersion;
+  bool _isHandlingLifecycle = false;
+  SyncTrigger? _lastSyncTrigger;
 
   @override
   void initState() {
@@ -96,8 +93,11 @@ class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
       if (local == null || remote == null) return;
       _showSyncConsentDialog(local, remote);
     });
-
-    _startPeriodicSyncCheck();
+    
+    // Track sync triggers for downgrade dialog
+    _repository.onSyncStatusChanged.listen((entry) {
+      _lastSyncTrigger = entry.trigger;
+    });
   }
   
   void _showLevelUpDialog(Map<String, dynamic> data) {
@@ -117,24 +117,27 @@ class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _syncCheckTimer?.cancel();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _autoSyncOnResume();
+    if (_isHandlingLifecycle) return;
+    _isHandlingLifecycle = true;
+    
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      // App going to background - flush pending changes
+      _repository.onAppPaused().then((_) {
+        _isHandlingLifecycle = false;
+      });
+    } else if (state == AppLifecycleState.resumed) {
+      // App returning from background - smart sync check
+      _repository.onAppResumed().then((_) {
+        _isHandlingLifecycle = false;
+      });
+    } else {
+      _isHandlingLifecycle = false;
     }
-  }
-
-  Future<void> _autoSyncOnResume() async {
-    if (_isAutoSyncing) return;
-    _isAutoSyncing = true;
-    try {
-      await _repository.loadGames();
-    } catch (_) {}
-    _isAutoSyncing = false;
   }
 
   String _formatSyncSummary(SyncSummary summary) {
@@ -145,82 +148,91 @@ class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
         'Games ${summary.games} • Plays ${summary.plays}';
   }
 
+  String _getTriggerDescription(SyncTrigger? trigger) {
+    if (trigger == null) return 'Unknown';
+    switch (trigger) {
+      case SyncTrigger.appStart:
+        return 'App startup sync';
+      case SyncTrigger.appResume:
+        return 'App resume sync (was in background >5 min)';
+      case SyncTrigger.manualUpload:
+        return 'Manual upload requested';
+      case SyncTrigger.manualDownload:
+        return 'Manual download requested';
+      case SyncTrigger.autoSync:
+        return 'Automatic sync after changes';
+      case SyncTrigger.backgroundFlush:
+        return 'Auto-save before going to background';
+    }
+  }
+
   Future<void> _showSyncConsentDialog(SyncSummary local, SyncSummary remote) async {
     if (!mounted) return;
+    final triggerDesc = _getTriggerDescription(_lastSyncTrigger);
+    
     final confirm = await showDialog<bool>(
       context: context,
       useRootNavigator: true,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Potential Downgrade'),
-        content: Text(
-          'Uploading now would overwrite higher stats on the server.\n\n'
-          'Local: ${_formatSyncSummary(local)}\n\n'
-          'Remote: ${_formatSyncSummary(remote)}',
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Potential Downgrade'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.sync, size: 16, color: Colors.orange),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Triggered by: $triggerDesc',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Uploading now would overwrite higher stats on the server:',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 12),
+              Text('Local:\n${_formatSyncSummary(local)}'),
+              const SizedBox(height: 8),
+              Text('Remote:\n${_formatSyncSummary(remote)}'),
+            ],
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Upload Anyway')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.orange),
+            child: const Text('Upload Anyway'),
+          ),
         ],
       ),
     );
 
     _repository.resolveSyncConsent(confirm == true);
-  }
-
-  void _startPeriodicSyncCheck() {
-    _syncCheckTimer?.cancel();
-    _syncCheckTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      _checkRemoteVersion();
-    });
-  }
-
-  Future<void> _checkRemoteVersion() async {
-    if (_isSyncCheckRunning || _syncPromptVisible) return;
-    _isSyncCheckRunning = true;
-    try {
-      final hasCreds = await _repository.hasSyncCredentials();
-      if (!hasCreds) {
-        _isSyncCheckRunning = false;
-        return;
-      }
-
-      final remoteVersion = await _repository.fetchRemoteVersion();
-      if (remoteVersion == null) {
-        _isSyncCheckRunning = false;
-        return;
-      }
-
-      final localVersion = _repository.dataVersion;
-      if (remoteVersion > localVersion &&
-          (remoteVersion != _lastPromptedRemoteVersion)) {
-        _lastPromptedRemoteVersion = remoteVersion;
-        _syncPromptVisible = true;
-        if (!mounted) return;
-
-        final confirm = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('New Sync Available'),
-            content: Text('A newer version is available on the server (v$remoteVersion).\n'
-                'Do you want to sync now?'),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Later')),
-              TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sync Now')),
-            ],
-          ),
-        );
-
-        if (confirm == true) {
-          await _repository.loadGames();
-        }
-        _syncPromptVisible = false;
-      }
-    } catch (_) {
-      _syncPromptVisible = false;
-    } finally {
-      _isSyncCheckRunning = false;
-    }
   }
   
   @override

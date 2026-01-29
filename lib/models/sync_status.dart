@@ -18,10 +18,12 @@ enum SyncResultType {
 
 /// What triggered the sync
 enum SyncTrigger {
-  appStart,      // Initial load (download check)
+  appStart,      // Initial cold start (download check)
+  appResume,     // App returned from background (>5 min)
   manualUpload,  // User pressed force upload
   manualDownload,// User pressed force download  
   autoSync,      // Automatic batched upload after changes
+  backgroundFlush, // Auto-flush when going to background
 }
 
 /// A single sync log entry for history
@@ -84,12 +86,16 @@ class SyncLogEntry {
     switch (trigger) {
       case SyncTrigger.appStart:
         return 'App Start';
+      case SyncTrigger.appResume:
+        return 'App Resume';
       case SyncTrigger.manualUpload:
         return 'Manual Upload';
       case SyncTrigger.manualDownload:
         return 'Manual Download';
       case SyncTrigger.autoSync:
         return 'Auto Sync';
+      case SyncTrigger.backgroundFlush:
+        return 'Background Flush';
     }
   }
 

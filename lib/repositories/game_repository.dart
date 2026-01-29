@@ -43,6 +43,10 @@ class GameRepository extends ChangeNotifier {
   Timer? _syncDebounceTimer;
   bool _isDirty = false;
   static const _syncDebounceDelay = Duration(seconds: 2);
+  
+  // Resume sync tracking
+  DateTime? _backgroundedAt;
+  static const _resumeSyncThreshold = Duration(minutes: 5);
 
   Future<void> _loadSyncHistory() async {
     final prefs = await SharedPreferences.getInstance();
@@ -113,6 +117,64 @@ class GameRepository extends ChangeNotifier {
     if (_isDirty) {
       await _performDebouncedUpload();
     }
+  }
+
+  /// Called when app goes to background - flush any pending changes
+  Future<void> onAppPaused() async {
+    _backgroundedAt = DateTime.now();
+    
+    // Flush any pending changes so they aren't lost if app is killed
+    if (_isDirty) {
+      _syncDebounceTimer?.cancel();
+      _syncDebounceTimer = null;
+      _isDirty = false;
+      
+      await _syncLock.synchronized(() async {
+        final directory = await getApplicationDocumentsDirectory();
+        final entry = await _syncService.upload(
+          directory,
+          _dataVersion,
+          trigger: SyncTrigger.backgroundFlush,
+        );
+        _recordSyncEntry(entry);
+      });
+    }
+  }
+
+  /// Called when app returns from background - check if we should sync
+  /// Returns true if a sync was triggered
+  Future<bool> onAppResumed() async {
+    if (_backgroundedAt == null) return false;
+    
+    final elapsed = DateTime.now().difference(_backgroundedAt!);
+    _backgroundedAt = null;
+    
+    // Only sync if we were in background for more than threshold
+    if (elapsed < _resumeSyncThreshold) {
+      return false;
+    }
+    
+    // Check if we have credentials
+    final hasCreds = await _syncService.hasCredentials();
+    if (!hasCreds) return false;
+    
+    // Check for remote updates
+    await _syncLock.synchronized(() async {
+      final directory = await getApplicationDocumentsDirectory();
+      final entry = await _syncService.sync(
+        directory,
+        _dataVersion,
+        trigger: SyncTrigger.appResume,
+      );
+      _recordSyncEntry(entry);
+      
+      if (entry.isSuccess && entry.filesDownloaded > 0) {
+        await _loadLocalVersion();
+        await _reloadFromDisk();
+      }
+    });
+    
+    return true;
   }
 
   int get dataVersion => _dataVersion;
