@@ -238,7 +238,7 @@ class SyncService {
     Directory localDir,
     int localVersion, {
     bool allowUpload = false,
-    SyncTrigger trigger = SyncTrigger.autoCheck,
+    SyncTrigger trigger = SyncTrigger.appStart,
   }) async {
     final builder = SyncLogBuilder(
       direction: SyncDirection.download,
@@ -341,7 +341,7 @@ class SyncService {
   Future<SyncLogEntry> upload(
     Directory localDir,
     int version, {
-    SyncTrigger trigger = SyncTrigger.autoSave,
+    SyncTrigger trigger = SyncTrigger.autoSync,
   }) async {
     final builder = SyncLogBuilder(
       direction: SyncDirection.upload,

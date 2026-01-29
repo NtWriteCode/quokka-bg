@@ -18,11 +18,10 @@ enum SyncResultType {
 
 /// What triggered the sync
 enum SyncTrigger {
-  appStart,      // Initial load
+  appStart,      // Initial load (download check)
   manualUpload,  // User pressed force upload
   manualDownload,// User pressed force download  
-  autoSave,      // Automatic after saving data
-  autoCheck,     // Periodic check
+  autoSync,      // Automatic batched upload after changes
 }
 
 /// A single sync log entry for history
@@ -89,10 +88,8 @@ class SyncLogEntry {
         return 'Manual Upload';
       case SyncTrigger.manualDownload:
         return 'Manual Download';
-      case SyncTrigger.autoSave:
-        return 'Auto Save';
-      case SyncTrigger.autoCheck:
-        return 'Auto Check';
+      case SyncTrigger.autoSync:
+        return 'Auto Sync';
     }
   }
 

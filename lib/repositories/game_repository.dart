@@ -39,6 +39,11 @@ class GameRepository extends ChangeNotifier {
   SyncLogEntry? get lastSyncEntry => _syncHistory.lastEntry;
   SyncHistoryManager get syncHistory => _syncHistory;
 
+  // Debounced sync
+  Timer? _syncDebounceTimer;
+  bool _isDirty = false;
+  static const _syncDebounceDelay = Duration(seconds: 2);
+
   Future<void> _loadSyncHistory() async {
     final prefs = await SharedPreferences.getInstance();
     final json = prefs.getString('sync_history');
@@ -54,6 +59,60 @@ class GameRepository extends ChangeNotifier {
     _syncHistory.addEntry(entry);
     _syncStatusController.add(entry);
     _saveSyncHistory(); // Fire and forget
+  }
+
+  /// Mark data as dirty and schedule a debounced upload.
+  /// If called multiple times within [_syncDebounceDelay], only one upload happens.
+  void _markDirtyAndScheduleSync() {
+    _isDirty = true;
+    _dataVersion++;
+    _saveLocalVersion(); // Fire and forget
+    
+    // Cancel any existing timer and start a new one
+    _syncDebounceTimer?.cancel();
+    _syncDebounceTimer = Timer(_syncDebounceDelay, () {
+      _performDebouncedUpload();
+    });
+  }
+
+  /// Perform the actual upload after debounce delay
+  Future<void> _performDebouncedUpload() async {
+    if (!_isDirty) return;
+    
+    await _syncLock.synchronized(() async {
+      if (!_isDirty) return; // Double-check inside lock
+      _isDirty = false;
+      
+      final directory = await getApplicationDocumentsDirectory();
+      final entry = await _syncService.upload(
+        directory,
+        _dataVersion,
+        trigger: SyncTrigger.autoSync,
+      );
+      _recordSyncEntry(entry);
+      
+      // Also upload leaderboard entry if enabled
+      try {
+        final leaderboardEnabled = await _syncService.isLeaderboardEnabled();
+        if (leaderboardEnabled && _userStats.level >= 3) {
+          await uploadLeaderboardEntry();
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('Leaderboard upload failed: $e');
+        }
+      }
+    });
+  }
+
+  /// Flush any pending uploads immediately (used before downloads)
+  Future<void> _flushPendingUploads() async {
+    _syncDebounceTimer?.cancel();
+    _syncDebounceTimer = null;
+    
+    if (_isDirty) {
+      await _performDebouncedUpload();
+    }
   }
 
   int get dataVersion => _dataVersion;
@@ -736,7 +795,6 @@ class GameRepository extends ChangeNotifier {
   }
 
   Future<void> recalculateXp() async {
-    await _preSaveSync();
     
     double totalXp = 0.0;
     
@@ -1015,10 +1073,10 @@ class GameRepository extends ChangeNotifier {
     try {
       final file = await _statsFile;
       await file.writeAsString(jsonEncode(_userStats.toJson()));
-      await _postSaveSync();
+      _markDirtyAndScheduleSync();
       notifyListeners();
     } catch (e) {
-      print('DEBUG: Error saving stats: $e');
+      if (kDebugMode) debugPrint('Error saving stats: $e');
     }
   }
 
@@ -1032,6 +1090,11 @@ class GameRepository extends ChangeNotifier {
       final canUpload = await _canUploadBasedOnStats();
       if (!canUpload) return;
     }
+    
+    // Cancel any pending debounced sync since we're doing a manual one
+    _syncDebounceTimer?.cancel();
+    _syncDebounceTimer = null;
+    _isDirty = false;
     
     await _syncLock.synchronized(() async {
       final directory = await getApplicationDocumentsDirectory();
@@ -1050,8 +1113,52 @@ class GameRepository extends ChangeNotifier {
     });
   }
 
+  /// Manual download from server. Flushes any pending uploads first.
+  Future<void> triggerManualSyncDown() async {
+    // First, flush any pending uploads to avoid losing local changes
+    await _flushPendingUploads();
+    
+    await _syncLock.synchronized(() async {
+      final directory = await getApplicationDocumentsDirectory();
+      
+      // Force download regardless of version
+      final entry = await _syncService.sync(
+        directory,
+        -1, // Use -1 to force download (any remote version > -1)
+        trigger: SyncTrigger.manualDownload,
+      );
+      _recordSyncEntry(entry);
+      
+      if (entry.isSuccess && entry.filesDownloaded > 0) {
+        await _loadLocalVersion();
+      }
+    });
+    
+    // Reload data from disk
+    await _reloadFromDisk();
+  }
+
+  /// Reload all data from disk into memory
+  Future<void> _reloadFromDisk() async {
+    final file = await _localFile;
+    if (await file.exists()) {
+      final contents = await file.readAsString();
+      final List<dynamic> jsonList = jsonDecode(contents);
+      _ownedGames = jsonList.map((e) => BoardGame.fromJson(e)).toList();
+    } else {
+      _ownedGames = [];
+    }
+    
+    await loadPlayers();
+    await loadPlays();
+    await loadUserStats();
+    await checkAchievements();
+    notifyListeners();
+  }
+
   @override
   void dispose() {
+    _syncDebounceTimer?.cancel();
     _unlockedController.close();
     _levelUpController.close();
     _syncConsentController.close();
@@ -1059,67 +1166,17 @@ class GameRepository extends ChangeNotifier {
     super.dispose();
   }
 
-  Future<void> _preSaveSync() async {
-    await _syncLock.synchronized(() async {
-      final directory = await getApplicationDocumentsDirectory();
-      final entry = await _syncService.sync(
-        directory,
-        _dataVersion,
-        trigger: SyncTrigger.autoCheck,
-      );
-      _recordSyncEntry(entry);
-      
-      if (entry.isSuccess && entry.filesDownloaded > 0) {
-        // Reload everything from disk to memory
-        final file = await _localFile;
-        if (await file.exists()) {
-          final contents = await file.readAsString();
-          final List<dynamic> jsonList = jsonDecode(contents);
-          _ownedGames = jsonList.map((e) => BoardGame.fromJson(e)).toList();
-        }
-        await loadPlayers();
-        await loadPlays();
-        await loadUserStats();
-        await _loadLocalVersion();
-        notifyListeners();
-      }
-    });
-  }
-
-  Future<void> _postSaveSync() async {
-    await _syncLock.synchronized(() async {
-      _dataVersion++;
-      await _saveLocalVersion();
-      final directory = await getApplicationDocumentsDirectory();
-      
-      final canUpload = await _canUploadBasedOnStats();
-      if (canUpload) {
-        final entry = await _syncService.upload(
-          directory,
-          _dataVersion,
-          trigger: SyncTrigger.autoSave,
-        );
-        _recordSyncEntry(entry);
-      }
-      
-      // Also upload leaderboard entry if enabled
-      final leaderboardEnabled = await _syncService.isLeaderboardEnabled();
-      if (leaderboardEnabled && _userStats.level >= 3) {
-        await uploadLeaderboardEntry();
-      }
-    });
-  }
 
   Future<void> saveGames() async {
     try {
       final file = await _localFile;
       final jsonList = _ownedGames.map((g) => g.toJson()).toList();
       await file.writeAsString(jsonEncode(jsonList));
-      await _postSaveSync();
+      _markDirtyAndScheduleSync();
       notifyListeners();
     } catch (e) {
-       print('DEBUG: Error saving games: $e');
-     }
+      if (kDebugMode) debugPrint('Error saving games: $e');
+    }
   }
 
   Future<void> savePlayers() async {
@@ -1127,10 +1184,10 @@ class GameRepository extends ChangeNotifier {
       final file = await _playersFile;
       final jsonList = _players.map((p) => p.toJson()).toList();
       await file.writeAsString(jsonEncode(jsonList));
-      await _postSaveSync();
+      _markDirtyAndScheduleSync();
       notifyListeners();
     } catch (e) {
-      print('DEBUG: Error saving players: $e');
+      if (kDebugMode) debugPrint('Error saving players: $e');
     }
   }
 
@@ -1139,15 +1196,14 @@ class GameRepository extends ChangeNotifier {
       final file = await _playsFile;
       final jsonList = _playRecords.map((p) => p.toJson()).toList();
       await file.writeAsString(jsonEncode(jsonList));
-      await _postSaveSync();
+      _markDirtyAndScheduleSync();
       notifyListeners();
     } catch (e) {
-      print('DEBUG: Error saving plays: $e');
+      if (kDebugMode) debugPrint('Error saving plays: $e');
     }
   }
 
   Future<void> addGame(BoardGame game) async {
-    await _preSaveSync();
     _ownedGames.add(game);
     await saveGames();
     if (game.isWishlist) {
@@ -1163,19 +1219,16 @@ class GameRepository extends ChangeNotifier {
   }
 
   Future<void> addPlayer(Player player) async {
-    await _preSaveSync();
     _players.add(player);
     await savePlayers();
   }
 
   Future<void> removePlayer(String id) async {
-    await _preSaveSync();
     _players.removeWhere((p) => p.id == id);
     await savePlayers();
   }
 
   Future<void> updatePlayer(Player updatedPlayer) async {
-    await _preSaveSync();
     final index = _players.indexWhere((p) => p.id == updatedPlayer.id);
     if (index != -1) {
       _players[index] = updatedPlayer;
@@ -1184,7 +1237,6 @@ class GameRepository extends ChangeNotifier {
   }
 
   Future<void> addPlayRecord(PlayRecord record) async {
-    await _preSaveSync();
     _playRecords.add(record);
     await savePlays();
     
@@ -1218,13 +1270,11 @@ class GameRepository extends ChangeNotifier {
   }
 
   Future<void> removePlayRecord(String id) async {
-    await _preSaveSync();
     _playRecords.removeWhere((r) => r.id == id);
     await savePlays();
   }
 
   Future<void> updatePlayRecord(PlayRecord updatedRecord) async {
-    await _preSaveSync();
     final index = _playRecords.indexWhere((r) => r.id == updatedRecord.id);
     if (index != -1) {
       _playRecords[index] = updatedRecord;
@@ -1278,7 +1328,6 @@ class GameRepository extends ChangeNotifier {
   }
 
   Future<void> updateGame(BoardGame updatedGame) async {
-    await _preSaveSync();
     final index = _ownedGames.indexWhere((g) => g.id == updatedGame.id);
     if (index != -1) {
       final oldGame = _ownedGames[index];
@@ -1331,7 +1380,6 @@ class GameRepository extends ChangeNotifier {
   }
 
   Future<void> updateGameStatus(String id, GameStatus newStatus) async {
-    await _preSaveSync();
     final index = _ownedGames.indexWhere((g) => g.id == id);
     if (index != -1) {
       final oldGame = _ownedGames[index];
@@ -1362,7 +1410,6 @@ class GameRepository extends ChangeNotifier {
   }
 
   Future<void> removeGame(String id) async {
-    await _preSaveSync();
     _ownedGames.removeWhere((g) => g.id == id);
     await saveGames();
   }
@@ -1571,13 +1618,15 @@ class GameRepository extends ChangeNotifier {
       final statsFile = await _statsFile;
       await statsFile.writeAsString(jsonEncode(_userStats.toJson()));
       
-      // 3. Increment version and sync to server
-      // This will ensure remote also gets the empty files
-      await _postSaveSync();
+      // 3. Increment version and sync to server immediately
+      // Reset is a critical action, don't debounce
+      _dataVersion++;
+      await _saveLocalVersion();
+      await triggerManualSyncUp(skipConsent: true);
       
       notifyListeners();
     } catch (e) {
-      print('DEBUG: Error resetting data: $e');
+      if (kDebugMode) debugPrint('Error resetting data: $e');
       rethrow;
     }
   }

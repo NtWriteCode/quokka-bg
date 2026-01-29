@@ -589,7 +589,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 if (!confirmed) return;
 
                 await _performSyncWithProgress(
-                  syncOperation: () => widget.repository.loadGames(),
+                  syncOperation: () => widget.repository.triggerManualSyncDown(),
                   successMessage: 'Data synced from server successfully',
                 );
               },
